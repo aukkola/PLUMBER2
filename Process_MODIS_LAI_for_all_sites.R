@@ -8,9 +8,19 @@ rm(list=ls(all=TRUE))
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
 
 
+#Create output folder for met files with processed LAI time series
+outdir <- paste0(path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
+
+dir.create(outdir, recursive=TRUE)
+
+
+#Copy Met files to the new folder
+file.copy(from = list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met/"), full.names=TRUE), 
+          to = outdir, overwrite=TRUE)
+
+
 #Get sites
-site_files <- list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met_testing/"),
-                         full.names=TRUE)
+site_files <- list.files(outdir, full.names=TRUE)
 
 #Open file handles
 site_nc <- lapply(site_files, nc_open, write=TRUE)
@@ -18,11 +28,6 @@ site_nc <- lapply(site_files, nc_open, write=TRUE)
 #Get site codes
 site_codes <- sapply(site_nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
 
-
-#Create output folder for processed LAI time series
-outdir <- paste0(path, "/MODIS_LAI_time_series/Processed_data/")
-
-dir.create(outdir, recursive=TRUE)
 
 
 
@@ -54,18 +59,25 @@ for (s in 1:length(site_codes)) {
   
   modis_path <- paste0(path, "/MODIS_LAI_time_series/Raw_data")
   
-  lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m"), 
+  lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m_2000-01-012019-03-27"), 
                          full.names=TRUE)
   
   qc_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_FparLai_QC"), 
                          full.names=TRUE)
   
-  sd_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m"), 
+  sd_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m_2000-01-012019-03-27"), 
                          full.names=TRUE)
   
-  if(length(lai_file) == 0) {
+  #Check if found site file
+  if (length(lai_file) == 0) {
     print(paste0("Could not find site: ", site_codes[s]))
     next
+  }
+  
+  #Check that only found one file per variable
+  if (any (c(length(lai_file), length(qc_file), length(sd_file)) > 1) ) {
+    stop("Found too many lai files, check")
+    
   }
   
   #Read data
@@ -85,7 +97,7 @@ for (s in 1:length(site_codes)) {
   lai_pixel <- matrix(nrow=no_tsteps, ncol=length(pixel_no))
   sd_pixel  <- matrix(nrow=no_tsteps, ncol=length(pixel_no))
   qc_pixel  <- matrix(nrow=no_tsteps, ncol=length(pixel_no))
-  
+
   #Save time stamps
   lai_time <- as.Date(lai$calendar_date[which(lai$pixel == pixel_no[1])])
   
@@ -96,7 +108,7 @@ for (s in 1:length(site_codes)) {
     lai_pixel[,p] <- lai$value[which(lai$pixel == pixel_no[p])] * lai$scale[1]
     sd_pixel[,p]  <- sd$value[which(sd$pixel == pixel_no[p])] * sd$scale[1]
     qc_pixel[,p]  <- qc$value[which(sd$pixel == pixel_no[p])] 
-    
+
   }
   
   
@@ -131,7 +143,7 @@ for (s in 1:length(site_codes)) {
       
       #Weight grid cell estimates by their standard deviation
       #Following Martin's method (https://github.com/mdekauwe/get_MODIS_LAI_australia/blob/master/build_modis_climatology.py),
-      #but normalising by sum of
+      #but normalising by sum of standard deviations
       
       sd_vals <- sd_pixel[t,]
         
@@ -174,6 +186,71 @@ for (s in 1:length(site_codes)) {
   # lines(smooth_lai_ts, col='blue')
 
   
+  
+
+  
+  #######################################
+  ### Add missing time steps in MODIS ###
+  #######################################
+  
+  #Some MODIS time series are missing time steps, not sure why.
+  #Add these missing time steps by using the mean of previous and next value
+  
+  
+  #Get modis timing information
+  modis_startyr <- as.numeric(format(lai_time[1], "%Y"))
+  modis_endyr   <- as.numeric(format(lai_time[length(lai_time)], "%Y"))
+  
+  
+  #Check if LAI has missing time steps
+  if (any (diff.Date(lai_time) > 8)) {
+
+    #Loop through years
+    all_tsteps <- vector()
+    for (y in modis_startyr:modis_endyr){
+      
+      all_tsteps <- append(all_tsteps, seq.Date(as.Date(paste0(y, "-01-01")), 
+                           by=lai_time[2]-lai_time[1], length.out=46))
+      
+    }
+    
+    #Remove extra tstesp for final year
+    all_tsteps <- all_tsteps[-which(all_tsteps > lai_time[length(lai_time)])]
+    
+    #Find missing tsteps
+    missing <- which(!(all_tsteps %in% lai_time))
+
+    
+    #Create new time series, where missing tsteps set to NA
+    new_ts <- smooth_lai_ts
+    
+    for (n in missing) { 
+      
+      #Add new value
+      new_ts <- append(new_ts, NA, after=n-1) 
+      
+      #Then gapfill missing values by taking mean of previous and next values
+      
+      #!!!! N.B. this still returns a warning, need to fix !!!!!!!!!!!!!!!!!!!!!!!!!!
+      
+      previous <- new_ts[max(which(!is.na(new_ts[1:max(1, (n-1))])))] #make sure can't go negative
+      nextval <- new_ts[n+min(which(!is.na(new_ts[min(length(new_ts), n+1):length(new_ts)])))] #make sure can't exceed vec length
+      
+      new_ts[n] <- mean(previous, nextval, na.rm=TRUE)
+      }
+    
+    
+    
+    
+    #Replace time vector
+    lai_time <- all_tsteps
+    smooth_lai_ts <- new_ts
+
+  }
+  
+  
+  
+  
   ###################################
   ### Match with site time series ###
   ###################################
@@ -192,11 +269,6 @@ for (s in 1:length(site_codes)) {
   nyr        <- round(obs_length/(site_tstep_size*365))
   endyr      <- startyr + nyr - 1 
   
-  
-  
-  #Get modis timing information
-  modis_startyr <- as.numeric(format(lai_time[1], "%Y"))
-  modis_endyr   <- as.numeric(format(lai_time[length(lai_time)], "%Y"))
   
   #Need to create climatological average if site time series starts before modis
   #(use 2003 as modis start year to test this as modis starts halfway through 2002)
@@ -235,8 +307,8 @@ for (s in 1:length(site_codes)) {
     
     #Overwrite original time series with new extended data
     smooth_lai_ts <- append(c(rep(modis_clim, modis_startyr - startyr), 
-                           modis_clim[1:(no_tsteps - length(first_year))]),
-                         smooth_lai_ts)
+                              modis_clim[1:(no_tsteps - length(first_year))]),
+                              smooth_lai_ts)
     
     
     #Add new time stamps
