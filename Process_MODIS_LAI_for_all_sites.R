@@ -59,13 +59,13 @@ for (s in 1:length(site_codes)) {
   
   modis_path <- paste0(path, "/MODIS_LAI_time_series/Raw_data")
   
-  lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m_2000-01-012019-03-27"), 
+  lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m_"), 
                          full.names=TRUE)
   
   qc_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_FparLai_QC"), 
                          full.names=TRUE)
   
-  sd_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m_2000-01-012019-03-27"), 
+  sd_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m_"), 
                          full.names=TRUE)
   
   #Check if found site file

@@ -9,8 +9,13 @@ rm(list=ls(all=TRUE))
 
 
 #Thresholds for missing and gap-filled time steps
-missing      <- 0   #max. percent missing (must be set)
-gapfill_all  <- 100 #max. percent gapfilled (optional)
+missing_met  <- 0   #max. percent missing (must be set)
+missing_flux <- 100 
+
+gapfill_met_tier1 <- 30  #max. gapfilled percentage
+gapfill_met_tier2 <- 100
+gapfill_flux      <- 100
+
 min_yrs      <- 1   #min. number of consecutive years
 
 
@@ -18,7 +23,7 @@ min_yrs      <- 1   #min. number of consecutive years
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/"
 
 #Set output path for all data
-out_path <- paste0(path, "/All_flux_sites_processed/")
+out_path <- paste0(path, "/All_flux_sites_processed_", gapfill_met_tier1, "perc/")
 
 #Number of cluster
 ncl <- 10
@@ -75,17 +80,23 @@ for(k in 1:length(tstep)){
   #Import variables to cluster
   clusterExport(cl, "out_path_flx")
   clusterExport(cl, "convert_fluxnet_to_netcdf")
-  if(exists("missing"))   {clusterExport(cl, "missing")}
-  if(exists("gapfill_all"))   {clusterExport(cl, "gapfill_all")}
+  if(exists("missing_met"))   {clusterExport(cl, "missing_met")}
+  if(exists("missing_flux"))   {clusterExport(cl, "missing_flux")}
+  if(exists("gapfill_met_tier1"))   {clusterExport(cl, "gapfill_met_tier1")}
+  if(exists("gapfill_met_tier2"))   {clusterExport(cl, "gapfill_met_tier2")}
+  if(exists("gapfill_flux"))   {clusterExport(cl, "gapfill_flux")}
   if(exists("min_yrs"))   {clusterExport(cl, "min_yrs")}
 
+  
   #Loops through sites
   clusterMap(cl=cl, function(w,x,y,z) tryCatch(convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
                                                                          datasetversion=z, met_gapfill="ERAinterim", 
                                                                          flux_gapfill="statistical", era_file=y,
-                                                                         missing=missing, gapfill_all=gapfill_all,
-                                                                         min_yrs=min_yrs, model="CABLE",
-                                                                         check_range_action="truncate",
+                                                                         missing_met=missing_met, missing_flux=missing_flux,
+                                                                         gapfill_met_tier1=gapfill_met_tier1,
+                                                                         gapfill_met_tier2=gapfill_met_tier2,
+                                                                         gapfill_flux=gapfill_flux, min_yrs=min_yrs, 
+                                                                         model="CABLE", check_range_action="warn",
                                                                          include_all_eval=TRUE),
                                                error = function(e) NULL),
              w=infiles, x=site_codes, y=ERA_files, z=datasetversions)
@@ -133,8 +144,11 @@ cl <- makeCluster(getOption('cl.cores', ncl))
 #Import variables to cluster
 clusterExport(cl, "out_path_lt")
 clusterExport(cl, "convert_fluxnet_to_netcdf")
-if(exists("missing"))   {clusterExport(cl, "missing")}
-if(exists("gapfill_all"))   {clusterExport(cl, "gapfill_all")}
+if(exists("missing_met"))   {clusterExport(cl, "missing_met")}
+if(exists("missing_flux"))   {clusterExport(cl, "missing_flux")}
+if(exists("gapfill_met_tier1"))   {clusterExport(cl, "gapfill_met_tier1")}
+if(exists("gapfill_met_tier2"))   {clusterExport(cl, "gapfill_met_tier2")}
+if(exists("gapfill_flux"))   {clusterExport(cl, "gapfill_flux")}
 if(exists("min_yrs"))   {clusterExport(cl, "min_yrs")}
 
 #Loops through sites
@@ -142,10 +156,12 @@ clusterMap(cl=cl, function(w,x) tryCatch(convert_fluxnet_to_netcdf(infile=w, sit
                                                                    datasetname="LaThuile",
                                                                    met_gapfill="statistical", 
                                                                    flux_gapfill="statistical",
-                                                                   missing=missing, gapfill_all=gapfill_all,
-                                                                   min_yrs=min_yrs, model="CABLE",
-                                                                   include_all_eval=TRUE,
-                                                                   check_range_action="truncate",
+                                                                   missing_met=missing_met, missing_flux=missing_flux,
+                                                                   gapfill_met_tier1=gapfill_met_tier1,
+                                                                   gapfill_met_tier2=gapfill_met_tier2,
+                                                                   gapfill_flux=gapfill_flux, min_yrs=min_yrs, 
+                                                                   model="CABLE", include_all_eval=TRUE,
+                                                                   check_range_action="warn",
                                                                    copyfill=365, regfill=365),
                                                                 error = function(e) NULL),
                                                                 w=infiles, x=site_codes)
@@ -232,17 +248,23 @@ cl <- makeCluster(getOption('cl.cores', ncl))
 #Import variables to cluster
 clusterExport(cl, "out_path_oz")
 clusterExport(cl, "convert_fluxnet_to_netcdf")
-if(exists("missing"))   {clusterExport(cl, "missing")}
-if(exists("gapfill_all"))   {clusterExport(cl, "gapfill_all")}
+if(exists("missing_met"))   {clusterExport(cl, "missing_met")}
+if(exists("missing_flux"))   {clusterExport(cl, "missing_flux")}
+if(exists("gapfill_met_tier1"))   {clusterExport(cl, "gapfill_met_tier1")}
+if(exists("gapfill_met_tier2"))   {clusterExport(cl, "gapfill_met_tier2")}
+if(exists("gapfill_flux"))   {clusterExport(cl, "gapfill_flux")}
 if(exists("min_yrs"))   {clusterExport(cl, "min_yrs")}
 
 #Loops through sites
 clusterMap(cl=cl, function(w,x) tryCatch(convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_oz,
                                                                    datasetname="OzFlux", met_gapfill="statistical", 
                                                                    flux_gapfill="statistical",
-                                                                   missing=missing, gapfill_all=gapfill_all,
-                                                                   min_yrs=min_yrs, include_all_eval=TRUE,
-                                                                   check_range_action="truncate", model="CABLE"),
+                                                                   missing_met=missing_met, missing_flux=missing_flux,
+                                                                   gapfill_met_tier1=gapfill_met_tier1,
+                                                                   gapfill_met_tier2=gapfill_met_tier2,
+                                                                   gapfill_flux=gapfill_flux, min_yrs=min_yrs,
+                                                                   include_all_eval=TRUE, check_range_action="warn", 
+                                                                   model="CABLE"),
                                                                    error = function(e) NULL),
                                                                 w=in_files_oz, x=site_codes)
 stopCluster(cl)

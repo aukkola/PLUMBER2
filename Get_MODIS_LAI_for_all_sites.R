@@ -85,6 +85,67 @@ mt_batch_subset(df=sites_to_fetch, product=product, band=band_qc, start = "2000-
 
 
 
+#For some reason, batch processing is not retrieving all sites
+#Get these separately 
+
+sites_fetched <- sapply(list.files(outdir, pattern="_Lai_500m_"),
+                        function(x) strsplit(x, "_")[[1]][1])
+
+#Find missing sites
+missing_ind <- which(!(sites_to_fetch$site_name %in% sites_fetched))
+
+
+if (length(missing_ind) > 0) {
+  
+  for (s in missing_ind) {
+    
+    
+    print(paste0("Processing site ", sites_to_fetch$site_name[s]))
+    
+    #Get coordinates
+    lat=sites_to_fetch$lat[s]
+    lon=sites_to_fetch$lon[s]
+    
+    
+    #Get LAI
+    
+    mt_subset(product = product, lat = lat, lon = lon,
+              band = band_lai, start = "2000-01-01",
+              end = format(Sys.time(), "%Y-%m-%d"),
+              km_lr = km, km_ab = km,
+              site_name = as.character(sites_to_fetch$site_name[s]),
+              out_dir = outdir, internal=FALSE)
+    
+    
+    
+    
+    #Get LAI SD
+    mt_subset(product = product, lat = lat, lon = lon,
+              band = band_sd, start = "2000-01-01",
+              end = format(Sys.time(), "%Y-%m-%d"),
+              km_lr = km, km_ab = km,
+              site_name = as.character(sites_to_fetch$site_name[s]),
+              out_dir = outdir, internal=FALSE)
+    
+    
+    
+    
+    
+    #Get LAI QC
+    mt_subset(product = product, lat = lat, lon = lon,
+              band = band_qc, start = "2000-01-01",
+              end = format(Sys.time(), "%Y-%m-%d"),
+              km_lr = km, km_ab = km,
+              site_name = as.character(sites_to_fetch$site_name[s]),
+              out_dir = outdir, internal=FALSE)
+
+  }
+  
+}
+
+
+
+
 # 
 # 
 # subsets <- mt_batch_subset(df = df,
@@ -102,12 +163,30 @@ mt_batch_subset(df=sites_to_fetch, product=product, band=band_qc, start = "2000-
 # 
 # #
 # 
-# subset <- mt_subset(product = "MOD13Q1",
-#                     lat = 42.534171,
-#                     lon = -72.179003,
-#                     band = "250m_16_days_NDVI",
+
+# lat=74.4733
+# lon=-20.5503
+# lat=-14.063300  
+# lon=131.31810
+# subset <- mt_subset(product = "MCD15A2H",
+#                     lat = lat,
+#                     lon = lon,
+#                     band = "Lai_500m",
 #                     start = "2004-01-01",
-#                     end = "2005-12-30",
+#                     end = "2006-01-01",
 #                     km_lr = 1,
 #                     km_ab = 1,
 #                     site_name = "testsite")
+
+
+# 
+# mt_subset(product = product, lat = lat, lon = lon,
+#           band = band_lai, start = "2000-01-01",
+#           end = "2003-01-01",
+#           km_lr = km, km_ab = km,
+#           site_name = as.character(sites_to_fetch$site_name[s]),
+#           out_dir = outdir, internal=FALSE)
+# 
+
+
+
