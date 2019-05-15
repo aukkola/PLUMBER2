@@ -32,7 +32,6 @@ site_codes <- sapply(site_nc, function(x) ncatt_get(x, varid=0, "site_code")$val
 
 
 
-
 #MODISTools R package only lets you to extract 1km around site coordinates.
 #This is greater than the average site footprint.
 #Code returns data for 5 x 5 pixels, manually verified than the pixel numbers
@@ -257,7 +256,7 @@ for (s in 1:length(site_codes)) {
   #Need to create climatological average if site time series starts before modis,
   #or missing time steps were found
   #(use 2003 as modis start year to test this as modis starts halfway through 2002)
-  if ((startyr < modis_startyr+1) | any(is.na(smooth_lai_ts))) {
+  if ((startyr < modis_startyr) | any(is.na(smooth_lai_ts))) {
     
     ### Construct modis climatology ###
     
@@ -269,7 +268,7 @@ for (s in 1:length(site_codes)) {
     last_year <- which(grepl(modis_endyr, lai_time))
     
     #MODIS has 46 time steps per year
-    no_tsteps <- length(which(grepl(modis_startyr +1 , lai_time)))
+    no_tsteps <- length(which(grepl(modis_startyr , lai_time)))
 
     #Initialise
     modis_clim <- vector(length=no_tsteps)
@@ -288,29 +287,41 @@ for (s in 1:length(site_codes)) {
     }
     
     #Check that no NA values
-    if (any(is.na(modis_clim))) stop("Missing values in MODIS climatology")
+    if (any(is.na(modis_clim))) {
+      
+      missing <- which(is.na(modis_clim))
+      
+      #Use the mean of next and previous non-NA value to gapfill climatology
+      for(m in missing) { 
+        previous_val <- modis_clim[tail(which(!is.na(modis_clim[1:max(c(1, m-1))])), 1)]
+        next_val     <- modis_clim[m + which(!is.na(modis_clim[(m+1):length(modis_clim)]))[1]]
+        modis_clim[m]   <- mean(c(previous_val, next_val), na.rm=TRUE)
+      }
+    }
+    
+
     
     #Add climatological values to smoothed lai time series
     
-    #Overwrite original time series with new extended data
-    smooth_lai_ts <- append(rep(modis_clim, modis_startyr - startyr), 
-                              smooth_lai_ts)
-    
-    
-    #Add new time stamps
-    extended_lai_time <- vector()
-    for (y in startyr:modis_startyr) {
+    if ((startyr < modis_startyr)) {
       
-      extended_lai_time <- append(extended_lai_time, seq.Date(as.Date(paste0(y, "-01-01")), 
-               by=lai_time[2]-lai_time[1], length.out=no_tsteps))
+      #Overwrite original time series with new extended data
+      smooth_lai_ts <- append(rep(modis_clim, modis_startyr - startyr), 
+                              smooth_lai_ts)
+      
+      #Add new time stamps
+      extended_lai_time <- vector()
+      for (y in startyr:(modis_startyr-1)) {
+        
+        extended_lai_time <- append(extended_lai_time, seq.Date(as.Date(paste0(y, "-01-01")), 
+                                                                by=lai_time[2]-lai_time[1], length.out=no_tsteps))
+      }
+      
+      #Overwrite lai_time with new time series
+      lai_time <- append(extended_lai_time, lai_time)
       
     }
-    
-    #Overwrite lai_time with new time series
-    lai_time <- append(extended_lai_time[1:(length(extended_lai_time) - length(first_year))],
-                                lai_time)
-   
-    
+
     
     #Check if remaining NA values from missing time steps, gapfill if found
     if (any(is.na(smooth_lai_ts))) {
@@ -364,6 +375,8 @@ for (s in 1:length(site_codes)) {
   #Check that the number of time steps match
   if (length(modis_tseries) != length(site_time)) stop("MODIS and site time steps don't match")
   
+  #Also check that no missing values
+  if (any(is.na(modis_tseries))) { stop("Missing values in final MODIS time series")}
   
   
   ######################################
