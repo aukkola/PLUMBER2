@@ -142,7 +142,13 @@ for (s in 1:length(site_nc)) {
   
   
   #Smooth LAI time series with spline (and cap negative values)
-  smooth_lai_ts = smooth.spline(lai_time, site_tseries[[s]])$y
+  smooth_lai_ts = tryCatch(smooth.spline(lai_time, site_tseries[[s]])$y,
+                           error= function(e) NA)
+  if (all(is.na(smooth_lai_ts))) { 
+    warning(paste0("could not process site", site_codes[s], ", missing values in LAI"))
+    next 
+  }
+  
   smooth_lai_ts[smooth_lai_ts < 0] <- 0
   
   
