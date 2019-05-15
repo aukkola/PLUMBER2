@@ -4,11 +4,16 @@ library(raster)
 #clear R environment
 rm(list=ls(all=TRUE))
 
-#Set path
+#Set path (where site LAI data lives)
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
 
+
+#Which fluxnet data to use?
+flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_no_filtering/"
+
+
 #Create output folder for met files with processed LAI time series
-outdir <- paste0(path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
+outdir <- paste0(flx_path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
 
 #Get sites
 site_files <- list.files(outdir, full.names=TRUE)
@@ -53,6 +58,28 @@ lon <- lapply(site_nc, ncvar_get, varid="longitude")
 
 coords <- mapply(function(lon, lat) matrix(c(lon, lat), ncol=2),
                  lon=lon, lat=lat, SIMPLIFY=FALSE)
+
+
+
+#No data is found for Cape Tribulation
+#and the longitude in the Ozflux data file vs. their website doesn't match
+#Using longitude on the website here so data is retrieved
+if (length(which(site_codes == "AU-Ctr") > 0)){
+  au_ctr <- which(site_codes == "AU-Ctr")
+  coords[[au_ctr]][1] <- 145.3778
+}
+#Also no data at DK-Lva (checked that coordinates do match La Thuile metadata file)
+#Adjust so finds data
+if (length(which(site_codes == "DK-Lva") > 0)){
+  dk_lva <- which(site_codes == "DK-Lva")
+  coords[[dk_lva]][1] <- 12.1213
+}
+
+
+#These sites also need fixing...
+#"NO-Blv" "IT-SRo" "IT-Pia" "IT-Noe" "IT-Cp2" "IT-Cpz" "DK-ZaH" "ES-ES1"
+#Need to look for a function that finds nearest non-NA cell
+
 
 
 #Loop through LAI time slices
@@ -100,11 +127,6 @@ for (y in 1:length(lai_files)) {
 
 
 
-#Set time stamps
-lai_time <- seq.Date(from=as.Date("1999-01-01"), by="month",
-                     length.out=length(site_tseries[[1]]))
-  
-
 
 ##########################
 ### Loop through sites ###
@@ -113,7 +135,12 @@ lai_time <- seq.Date(from=as.Date("1999-01-01"), by="month",
 
 for (s in 1:length(site_nc)) {
   
-
+  
+  #Set time stamps (do inside loop as gets adjusted below)
+  lai_time <- seq.Date(from=as.Date("1999-01-01"), by="month",
+                       length.out=length(site_tseries[[1]]))
+  
+  
   #Smooth LAI time series with spline (and cap negative values)
   smooth_lai_ts = smooth.spline(lai_time, site_tseries[[s]])$y
   smooth_lai_ts[smooth_lai_ts < 0] <- 0
@@ -250,7 +277,7 @@ for (s in 1:length(site_nc)) {
                      missval=-9999,longname='Copernicus Global Land Service leaf area index')
   # Add variable and then variable data:
   site_nc[[s]] = ncvar_add(site_nc[[s]], laivar)
-  ncvar_put(site_nc[[s]], 'LAI_Copernicus', modis_tseries)
+  ncvar_put(site_nc[[s]], 'LAI_Copernicus', copernicus_tseries)
   
   #Close file handle
   nc_close(site_nc[[s]])
@@ -267,9 +294,6 @@ for (s in 1:length(site_nc)) {
 
   
   
-
-
-
 
 
 

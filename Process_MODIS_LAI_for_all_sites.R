@@ -7,15 +7,17 @@ rm(list=ls(all=TRUE))
 #Set path
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
 
+#Which fluxnet data to use?
+flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_no_filtering/"
 
 #Create output folder for met files with processed LAI time series
-outdir <- paste0(path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
+outdir <- paste0(flx_path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
 
 dir.create(outdir, recursive=TRUE)
 
 
 #Copy Met files to the new folder
-file.copy(from = list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met/"), full.names=TRUE), 
+file.copy(from = list.files(paste0(flx_path, "/all_sites_no_duplicates/Nc_files/Met/"), full.names=TRUE), 
           to = outdir, overwrite=TRUE)
 
 
@@ -194,62 +196,44 @@ for (s in 1:length(site_codes)) {
   #######################################
   
   #Some MODIS time series are missing time steps, not sure why.
-  #Add these missing time steps by using the mean of previous and next value
-  
+  #Add these missing time steps as NAs and then gapfill with climatology
+  #Also add missing time steps to first year (since MODIS starts in July)
   
   #Get modis timing information
   modis_startyr <- as.numeric(format(lai_time[1], "%Y"))
   modis_endyr   <- as.numeric(format(lai_time[length(lai_time)], "%Y"))
   
   
-  #Check if LAI has missing time steps
-  if (any (diff.Date(lai_time) > 8)) {
-
-    #Loop through years
-    all_tsteps <- vector()
-    for (y in modis_startyr:modis_endyr){
-      
-      all_tsteps <- append(all_tsteps, seq.Date(as.Date(paste0(y, "-01-01")), 
-                           by=lai_time[2]-lai_time[1], length.out=46))
-      
-    }
+  #Create time vector for complete years
+  
+  #Loop through years
+  all_tsteps <- vector()
+  for (y in modis_startyr:modis_endyr){
     
-    #Remove extra tstesp for final year
-    all_tsteps <- all_tsteps[-which(all_tsteps > lai_time[length(lai_time)])]
+    all_tsteps <- append(all_tsteps, seq.Date(as.Date(paste0(y, "-01-01")), 
+                         by=lai_time[2]-lai_time[1], length.out=46))
     
-    #Find missing tsteps
-    missing <- which(!(all_tsteps %in% lai_time))
-
+  }
+  
+  #Remove extra tstesp for final year
+  all_tsteps <- all_tsteps[-which(all_tsteps > lai_time[length(lai_time)])]
+  
+  #Find missing tsteps
+  missing <- which(!(all_tsteps %in% lai_time))
+    
+  if (length(missing) > 0) {
     
     #Create new time series, where missing tsteps set to NA
     new_ts <- smooth_lai_ts
     
-    for (n in missing) { 
-      
-      #Add new value
-      new_ts <- append(new_ts, NA, after=n-1) 
-      
-      #Then gapfill missing values by taking mean of previous and next values
-      
-      #!!!! N.B. this still returns a warning, need to fix !!!!!!!!!!!!!!!!!!!!!!!!!!
-      
-      previous <- new_ts[max(which(!is.na(new_ts[1:max(1, (n-1))])))] #make sure can't go negative
-      nextval <- new_ts[n+min(which(!is.na(new_ts[min(length(new_ts), n+1):length(new_ts)])))] #make sure can't exceed vec length
-      
-      new_ts[n] <- mean(previous, nextval, na.rm=TRUE)
-      }
-    
-    
-    
+    #Add new value
+    for (n in missing) {  new_ts <- append(new_ts, NA, after=n-1)  }
     
     #Replace time vector
     lai_time <- all_tsteps
     smooth_lai_ts <- new_ts
-
+    
   }
-  
-  
-  
   
   ###################################
   ### Match with site time series ###
@@ -270,16 +254,18 @@ for (s in 1:length(site_codes)) {
   endyr      <- startyr + nyr - 1 
   
   
-  #Need to create climatological average if site time series starts before modis
+  #Need to create climatological average if site time series starts before modis,
+  #or missing time steps were found
   #(use 2003 as modis start year to test this as modis starts halfway through 2002)
-  if (startyr < modis_startyr+1) {
+  if ((startyr < modis_startyr+1) | any(is.na(smooth_lai_ts))) {
     
     ### Construct modis climatology ###
     
-    #First find time steps for first (incomplete) year
-    first_year <- which(grepl(modis_startyr, lai_time))
+    #Check that time series starts on 1 Jan
+    if (!(format(lai_time[1], "%m-%d") == "01-01")) { stop("Time series does not start 1 Jan") }
     
-    #Then find time steps for last (incomplete) year
+    
+    #Find time steps for last (incomplete) year
     last_year <- which(grepl(modis_endyr, lai_time))
     
     #MODIS has 46 time steps per year
@@ -291,23 +277,23 @@ for (s in 1:length(site_codes)) {
     for (c in 1:no_tsteps) {
       
       #Indices for whole years
-      inds <- seq(c + length(first_year), by=no_tsteps, length.out=floor(length(lai_time)/no_tsteps))
+      inds <- seq(c, by=no_tsteps, length.out=floor(length(lai_time)/no_tsteps))
         
-      #Add first and last year if applicable
-      if (c > (no_tsteps - length(first_year))) { inds <- append(inds, first_year[c-length(first_year)])}
-      
+      #Add last year if applicable
       if( c <= length(last_year)) { inds <- append(inds, last_year[c]) }
       
       #Calculate average for time step
-      modis_clim[c] <- mean(smooth_lai_ts[inds])
+      modis_clim[c] <- mean(smooth_lai_ts[inds], na.rm=TRUE)
       
     }
+    
+    #Check that no NA values
+    if (any(is.na(modis_clim))) stop("Missing values in MODIS climatology")
     
     #Add climatological values to smoothed lai time series
     
     #Overwrite original time series with new extended data
-    smooth_lai_ts <- append(c(rep(modis_clim, modis_startyr - startyr), 
-                              modis_clim[1:(no_tsteps - length(first_year))]),
+    smooth_lai_ts <- append(rep(modis_clim, modis_startyr - startyr), 
                               smooth_lai_ts)
     
     
@@ -323,7 +309,20 @@ for (s in 1:length(site_codes)) {
     #Overwrite lai_time with new time series
     lai_time <- append(extended_lai_time[1:(length(extended_lai_time) - length(first_year))],
                                 lai_time)
+   
     
+    
+    #Check if remaining NA values from missing time steps, gapfill if found
+    if (any(is.na(smooth_lai_ts))) {
+      
+      #Find missing values
+      missing <- which(is.na(smooth_lai_ts))
+     
+      #Repeat climatology for all years and gapfill time series
+      clim_all_yrs <- rep(modis_clim, floor(length(lai_time)/no_tsteps))
+      smooth_lai_ts[missing] <- clim_all_yrs[missing]
+  
+    }
   }
   
   
