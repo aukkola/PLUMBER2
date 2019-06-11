@@ -104,7 +104,7 @@ for (y in 1:length(lai_files)) {
     #Average LAI so that each pixel represents the mean of itself 
     #and the neigbouring pixels
     lai_averaged <- brick(lapply(1:nlayers(lai), function(x) 
-                          focal(lai[[x]], w=matrix(1/9, nc=3, nr=3), fun=mean)))
+                          focal(lai[[x]], w=matrix(1,3,3), fun=mean)))
     
     writeRaster(lai_averaged, outfile_lai, varname="LAI", overwrite=TRUE)
     
@@ -119,8 +119,8 @@ for (y in 1:length(lai_files)) {
     #Initialise
     if(y == 1) site_tseries[[s]] <- vector()
     
-    #Get time series
-    site_tseries[[s]] <- append(site_tseries[[s]], as.vector(extract(lai_averaged, coords[[s]])))
+    #Get time series !NB NEED TO FIX HERE TO REMOVE SCALING  1/9 (caused by error in focal function) !!!!!!!!!!!!!!!!!!!!!!!
+    site_tseries[[s]] <- append(site_tseries[[s]], as.vector(extract(lai_averaged, coords[[s]]) /(1/9) ))
   }  
   
 }
@@ -293,13 +293,3 @@ for (s in 1:length(site_nc)) {
 }
 
   
-
-
-
-
-
-  
-  
-
-
-
