@@ -11,6 +11,16 @@ path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER
 
 #Source function
 source(paste0(path, "/scripts/functions/site_exceptions.R"))
+source(paste0(path, "/scripts/functions/diagnostic_plot.R"))
+source(paste0(path, "/scripts/functions/plot_timeseries.R"))
+
+
+
+
+#Output path
+outpath <- paste0(path, "/Post-processed_PLUMBER_outputs/")
+
+dir.create(outpath)
 
 
 
@@ -74,11 +84,26 @@ site_codes <- sapply(met_nc, function(x) ncatt_get(x, varid=0, "site_code")$valu
 
 
 
+#Create output directories
+
+outdir_met <- paste0(outpath, "/Nc_files/Met/")
+dir.create(outdir_met, recursive=TRUE)
+
+outdir_flux <- paste0(outpath, "/Nc_files/Flux/")
+dir.create(outdir_flux, recursive=TRUE)
+
+outdir_plot <- paste0(outpath, "/Diagnostic_plots/")
+dir.create(outdir_plot, recursive=TRUE)
+
+
+
+
 
 
 ### Loop through sites ###
 
 for (s in 1:length(site_codes)) {
+  
   
   
   #############################
@@ -111,8 +136,9 @@ for (s in 1:length(site_codes)) {
   } else {
     
 
-    
+    ###############################################
     #########------ Met corrections ------#########
+    ###############################################
     
     
     #######################
@@ -163,7 +189,6 @@ for (s in 1:length(site_codes)) {
     
     
     
-    
     ########################################
     ### Correct CO2 using global records ###
     ########################################
@@ -180,7 +205,7 @@ for (s in 1:length(site_codes)) {
       var_data$CO2air <- co2_ts 
       
       #Set QC values to missing
-      var_data$CO2air_qc <- rep(NA, length(time))  
+      var_data$CO2air_qc <- rep(new_qc, length(time))  
 
       #Replace gapfill percentage (now 100%)
       att_data$CO2air["Gap-filled_%"] <- 100
@@ -188,7 +213,6 @@ for (s in 1:length(site_codes)) {
       
     }
     
-     
     
     
     #############################################
@@ -227,7 +251,7 @@ for (s in 1:length(site_codes)) {
       
       #New start and end year
       new_start_year <- years[1] + start_yr -1 
-      new_end_year   <- years[length(years)] - end_yr
+      new_end_year   <- years[length(years)] + end_yr #end_yr negative so need to sum
       
       
       #Start and end indices
@@ -287,6 +311,7 @@ for (s in 1:length(site_codes)) {
     
     
     
+    
     ##########################################
     ### Check for missing vals in met data ###
     ##########################################
@@ -324,23 +349,110 @@ for (s in 1:length(site_codes)) {
     #####################
     
     
+    ###--- Set dimensions ---###
+    
+    #Get dimensions from input file
+    new_dims <- met_nc[[s]]$dim
     
     
+    ###--- Define variables ---###
+    
+    #Get variables from input file
+    new_vars <- met_nc[[s]]$var
+    
+
+    ###--- Set up new file ---###
+  
+    
+    #New file name
+    outfile_met <- paste0(outdir_met, "/", basename(met_files[s]))
     
     
+    #New file handle
+    out_nc <- nc_create(outfile_met, vars=new_vars)
     
+    
+    ###--- Global attributes ---###
+    
+    #Get global attributes
+    global_atts <- ncatt_get(met_nc[[s]], varid=0)
+
     #Add new QC flag value to metadata    
+    global_atts$QC_flag_descriptions <- paste0(global_atts$QC_flag_descriptions, 
+                                               ", Post-processed: ", new_qc)
+    
+    #Add to file
+    #For some reason this crashes if using lapply, loop works ok-ish    
+    for(a in 1:length(global_atts)){
+      ncatt_put(out_nc, varid=0, attname=names(global_atts)[a], 
+                attval=unlist(global_atts[a]))
+    }
+    
+    
+    ###--- Variable data ---###
+    
+    #Write variables to output file
+    for (v in names(new_vars)) {
+      
+        ncvar_put(nc=out_nc, varid=new_vars[[v]],
+                  vals=var_data[[v]])
+    }
+    
+    
+    ###--- Variable attributes ---###
+    
+    #Write attributes to output file
+    for (v in names(att_data)) {
+      
+      for (a in names(att_data[[v]]))
+      
+      ncatt_put(nc=out_nc, varid=new_vars[[v]],
+                attname=a, attval=att_data[[v]][[a]])
+
+    }
+    
+
+    
+    #Close output file
+    nc_close(out_nc)
+    
+    #Close original file handle
+    nc_close(met_nc[[s]])
     
     
     
     
     
     
-    
-    
-    
-    
+    ################################################
     #########------ Flux corrections ------#########
+    ################################################
+    
+    
+    #####################
+    ### Get variables ###
+    #####################
+    
+    
+    ### Get all data variables with a time dimension ###
+    
+    #Get variable names
+    vars <- names(flux_nc[[s]]$var)
+    
+    #Load variable data
+    var_data <- lapply(vars, function(x) ncvar_get(flux_nc[[s]], x))
+    
+    #Set names
+    names(var_data) <- vars 
+    
+    
+    #Get variable attributes
+    att_data <- lapply(vars, function(x) ncatt_get(flux_nc[[s]], x))
+    
+    #Set names
+    names(att_data) <- vars 
+    
+    
     
     
     
@@ -361,10 +473,145 @@ for (s in 1:length(site_codes)) {
     ### Adjust time period ###
     ##########################
     
+    #If need to adjust
+    if (start_yr > 1 | end_yr < 0) {
+      
+      
+      ### Adjust length of time-varying variables ##
+      
+      #Get dimensions for each variable
+      dims <- lapply(vars, function(x) sapply(flux_nc[[s]][["var"]][[x]][["dim"]], function(dim) dim[["name"]]))
+      
+      # #Find which variables are time-varying
+      var_inds <- which(sapply(dims, function(x) any(x == "time")))
+      
+      
+      
+      #Change dimensions and values for time-varying data
+      for (v in vars[var_inds]) {
+        
+        #Change time dimension
+        flux_nc[[s]]$var[[v]]$varsize[3] <- length(time_var)
+        
+        #Change time values
+        flux_nc[[s]]$var[[v]]$dim[[3]]$vals <- time_var
+        
+        #Change time size
+        flux_nc[[s]]$var[[v]]$dim[[3]]$len <- length(time_var)
+        
+        #Change length
+        flux_nc[[s]]$var[[v]]$size[3] <- length(time_var)
+        
+        #Change values in var_data
+        var_data[[v]] <- var_data[[v]][start_ind:end_ind]
+        
+        # #Change chunk size (no idea what this is but produces an error otherwise
+        # #during nc_create)
+        # met_nc[[s]]$var[[v]]$chunksizes <- NA
+      }
+      
+      
+      #Also adjust time dimension and units
+      
+      #Change time dimensions
+      #Change values, length and unit
+      flux_nc[[s]]$dim$time$vals  <- time_var
+      flux_nc[[s]]$dim$time$len   <- length(time_var)
+      
+      flux_nc[[s]]$dim$time$units <- paste0("seconds since ", new_start_year, "-01-01 00:00:00")
+      
+    }
     
     
-  
+    
+    ##################### 
+    ### Re-write file ###
+    #####################
+    
+    
+    ###--- Set dimensions ---###
+    
+    #Get dimensions from input file
+    new_dims <- flux_nc[[s]]$dim
+    
+    
+    ###--- Define variables ---###
+    
+    #Get variables from input file
+    new_vars <- flux_nc[[s]]$var
+    
+    
+    ###--- Set up new file ---###
+    
+    
+    #New file name
+    outfile_flux <- paste0(outdir_flux, "/", basename(flux_files[s]))
+    
+    
+    #New file handle
+    out_nc <- nc_create(outfile_flux, vars=new_vars)
+    
+    
+    ###--- Global attributes ---###
+    
+    #Get global attributes
+    global_atts <- ncatt_get(flux_nc[[s]], varid=0)
+    
+    #Add new QC flag value to metadata    
+    global_atts$QC_flag_descriptions <- paste0(global_atts$QC_flag_descriptions, 
+                                               ", Post-processed: ", new_qc)
+    
+    #Add to file
+    #For some reason this crashes if using lapply, loop works ok-ish    
+    for(a in 1:length(global_atts)){
+      ncatt_put(out_nc, varid=0, attname=names(global_atts)[a], 
+                attval=unlist(global_atts[a]))
+    }
+    
+    
+    ###--- Variable data ---###
+    
+    #Write variables to output file
+    for (v in names(new_vars)) {
+      
+      ncvar_put(nc=out_nc, varid=new_vars[[v]],
+                vals=var_data[[v]])
+    }
+    
+    
+    ###--- Variable attributes ---###
+    
+    #Write attributes to output file
+    for (v in names(att_data)) {
+      
+      for (a in names(att_data[[v]]))
+        
+        ncatt_put(nc=out_nc, varid=new_vars[[v]],
+                  attname=a, attval=att_data[[v]][[a]])
+      
+    }
+    
+    
+    
+    #Close output file
+    nc_close(out_nc)
+    
+    #Close original file handle
+    nc_close(flux_nc[[s]])
+    
+    
 
+    
+    
+    #############################################
+    #########------ Plot new data ------#########
+    #############################################
+    
+    diagnostic_plot(site_code=site_codes[s], outdir=outdir_plot,  
+                    met_file=outfile_met, flux_file=outfile_flux)
+   
+    
+    
   } #if processing 
 
 } #sites

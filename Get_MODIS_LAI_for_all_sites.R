@@ -21,6 +21,7 @@ site_nc <- lapply(site_files, nc_open)
 #Get site codes
 site_codes <- sapply(site_nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
 
+
 #Get latitude
 site_lat <- sapply(site_nc, ncvar_get, "latitude")
 
@@ -31,9 +32,13 @@ site_lon <- sapply(site_nc, ncvar_get, "longitude")
 #Remove duplicates
 rm_ind <- duplicated(site_codes)
 
-site_codes <- site_codes[-rm_ind]
-site_lat   <- site_lat[-rm_ind]
-site_lon   <- site_lon[-rm_ind]
+if (any(rm_ind)) {
+  
+  site_codes <- site_codes[-rm_ind]
+  site_lat   <- site_lat[-rm_ind]
+  site_lon   <- site_lon[-rm_ind]
+  
+}
 
 #Collate into data frame
 sites_to_fetch     <- data.frame("site_name" = site_codes)
