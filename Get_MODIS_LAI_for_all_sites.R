@@ -8,7 +8,7 @@ library(ncdf4)
 rm(list=ls(all=TRUE))
 
 #Set path
-path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
+path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 
 #Get sites
@@ -65,6 +65,7 @@ band_qc <- "FparLai_QC"
 #n.b. tried using 0.5 km but this makes the code crash (???)
 km <- 1
 
+print("Batch processing LAI")
 
 #Get LAI
 mt_batch_subset(df=sites_to_fetch, product=product, band=band_lai, start = "2000-01-01",
@@ -72,11 +73,15 @@ mt_batch_subset(df=sites_to_fetch, product=product, band=band_lai, start = "2000
                 out_dir = outdir, ncores = 10, internal=FALSE)
 
 
+print("Batch processing SD")
+
 #Get LAI SD
 mt_batch_subset(df=sites_to_fetch, product=product, band=band_sd, start = "2000-01-01",
                 end = format(Sys.time(), "%Y-%m-%d"), km_lr = km, km_ab = km,
                 out_dir = outdir, ncores = 10, internal=FALSE)
 
+
+print("Batch processing QC")
 
 #Get LAI QC
 mt_batch_subset(df=sites_to_fetch, product=product, band=band_qc, start = "2000-01-01",
@@ -84,6 +89,8 @@ mt_batch_subset(df=sites_to_fetch, product=product, band=band_qc, start = "2000-
                 out_dir = outdir, ncores = 10, internal=FALSE)
 
 
+
+print("Batch processing finished")
 
 #For some reason, batch processing is not retrieving all sites
 #Get these separately 

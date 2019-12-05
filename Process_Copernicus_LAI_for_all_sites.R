@@ -9,7 +9,7 @@ path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
 
 
 #Which fluxnet data to use?
-flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_no_filtering/"
+flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 
 #Create output folder for met files with processed LAI time series

@@ -1,4 +1,9 @@
-devtools::install_github("aukkola/FluxnetLSM", ref="master")
+#devtools::install_github("aukkola/FluxnetLSM", ref="master") #Package broken for some reason, must be installed locally
+
+setwd("/srv/ccrc/data04/z3509830/Fluxnet_data//All_flux_sites_processed_no_filtering/FluxnetLSM")
+#not sure why no-lock option is needed but won't install otherwise
+install.packages(".", repos=NULL, type='source', INSTALL_opts = c('--no-lock')) 
+
 
 library(FluxnetLSM)  # convert_fluxnet_to_netcdf
 library(parallel)
@@ -12,7 +17,7 @@ rm(list=ls(all=TRUE))
 missing_met  <- 0   #max. percent missing (must be set)
 missing_flux <- 100 
 
-gapfill_met_tier1 <- 30  #max. gapfilled percentage
+gapfill_met_tier1 <- 100  #max. gapfilled percentage
 gapfill_met_tier2 <- 100
 gapfill_flux      <- 100
 
@@ -23,10 +28,10 @@ min_yrs      <- 1   #min. number of consecutive years
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/"
 
 #Set output path for all data
-out_path <- paste0(path, "/All_flux_sites_processed_", gapfill_met_tier1, "perc/")
+out_path <- paste0(path, "/All_flux_sites_processed_no_filtering")
 
 #Number of cluster
-ncl <- 10
+ncl <- 12
 
 ### Process all datasets separately and then find non-duplicate sites ###
 
@@ -189,7 +194,7 @@ stopCluster(cl)
 ##############
 
 #Input path
-in_path <- paste0(path, '/OzFlux/Original_data/get_Ozflux_files/data/')
+in_path <- paste0(path, '/OzFlux/Original_data/')
 
 #Outputs will be saved to this directory
 out_path_pre <- paste(path, "/OzFlux/Pre-processed_OzFlux_data/", sep="/")
@@ -210,23 +215,32 @@ lapply(site_files, preprocess_OzFlux, outpath=out_path_pre)
 
 #Fluxnet site codes (having to set these manually for now, should add to pre-processing)
 site_codes <- list(AdelaideRiver         = "AU-Ade",
+                   AliceSpringsMulga     = "AU-ASM",           #NEW
                    Calperum              = "AU-Cpr", 
                    CapeTribulation       = "AU-Ctr",
                    CowBay                = "AU-Cow",         
-                   CumberlandPlains      = "AU-Cum",
+                   CumberlandPlain       = "AU-Cum",
                    DalyPasture           = "AU-DaP", #Site code only DaP on ozflux website
                    DalyUncleared         = "AU-DaS",
                    DryRiver              = "AU-Dry",
-                   Emerald               = "AU-Emr", #Not provided on ozflux website, maybe Arcturus? Taking site code from site metadata file     
+                   Emerald               = "AU-Emr", #Not provided on ozflux website, maybe Arcturus? Taking site code from site metadata file  
+                   FoggDam               = "AU-Fog",           #NEW
                    Gingin                = "AU-Gin",  
                    GreatWesternWoodlands = "AU-GWW",
-                   HowardSprings         = "AU-How",        
+                   HowardSprings         = "AU-How",   
+                   Litchfield            = "AU-Lit",            #NEW
+                   #Loxton                = "AU-Lox",   #Less than one year of data
                    Otway                 = "AU-Otw",           
                    RedDirtMelonFarm      = "AU-RDF", #Not provided on ozflux website, taking site code from site metadata file 
+                   Ridgefield            = "AU-Rgf",            #NEW
                    RiggsCreek            = "AU-Rig",
+                   RobsonCreek           = "AU-Rob",            #NEW
                    Samford               = "AU-Sam",
                    SturtPlains           = "AU-Stp",
+                   TiTreeEast            = "AU-TTE",             #NEW
                    Tumbarumba            = "AU-Tum",
+                   WallabyCreek          = "AU-Wac",            #NEW
+                   Warra                 = "AU-Wrr",             #NEW
                    Whroo                 = "AU-Whr",
                    WombatStateForest     = "AU-Wom",
                    Yanco                 = "AU-Ync"
@@ -237,7 +251,12 @@ site_codes <- list(AdelaideRiver         = "AU-Ade",
 sites <- names(site_codes)
 
 #Find input files
-in_files_oz <- sapply(sites, function(x) list.files(path=out_path_pre, pattern=x, full.names=TRUE))
+in_files_oz <- unlist(sapply(sites, function(x) list.files(path=out_path_pre, pattern=x, full.names=TRUE)))
+
+
+#Check that have as many original and pre-processed sites
+if (length(in_files_oz) != length(site_files)) stop("Check why sites don't match")
+
 
 
 ### Process data ###
@@ -271,6 +290,19 @@ stopCluster(cl)
 
 
 
+
+
+
+convert_fluxnet_to_netcdf(infile=in_files_oz[1], site_code=site_codes[1], out_path=out_path_oz,
+                          datasetname="OzFlux", met_gapfill="statistical", 
+                          flux_gapfill="statistical",
+                          missing_met=missing_met, missing_flux=missing_flux,
+                          gapfill_met_tier1=gapfill_met_tier1,
+                          gapfill_met_tier2=gapfill_met_tier2,
+                          gapfill_flux=gapfill_flux, min_yrs=min_yrs,
+                          include_all_eval=TRUE, check_range_action="warn", 
+                          model="CABLE")
+                          
 
 
 ###################################

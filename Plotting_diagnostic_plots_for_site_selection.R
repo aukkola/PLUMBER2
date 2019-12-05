@@ -6,7 +6,7 @@ rm(list=ls(all=TRUE))
 
 
 #Set path
-path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_no_filtering/"
+path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 #Source function
 source(paste0(path, "/scripts/functions/plot_timeseries.R"))
@@ -14,16 +14,16 @@ source(paste0(path, "/scripts/functions/plot_timeseries.R"))
 
 #Variables to plot
 vars <- c("SWdown", "LWdown", "Precip", "Tair", "Qair", "Wind", "CO2air", 
-          "Rnet", "Qle", "Qh", "Qg", "Ebal")
+          "Rnet", "Qle", "Qh", "Qg", "Ebal", "LAI_MODIS", "LAI_Copernicus")
   
 #Variable types
 var_type <- c("Met", "Met", "Met", "Met", "Met", "Met", "Flux",
-              "Flux", "Flux", "Flux", "Flux", "Flux") 
+              "Flux", "Flux", "Flux", "Flux", "Flux", "Met", "Met") 
 
 
 
 #Find sites
-site_files <- list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met"),
+site_files <- list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/"),
                           full.names=TRUE)
 
 #Open file handles
@@ -54,12 +54,16 @@ for (s in 1:length(site_codes)) {
   #Get timing information
   timing <- GetTimingNcfile(nc_flux)  
   
+  #QC information
+  QC_measured <- 0
+  if(substr(site_codes[s], 1, 3) == "AU-") QC_measured <- append(QC_measured, 10)
+  
   
   #Set up file
   outfile <- paste0(outdir, "/", site_codes[s], "_timeseries_plot.png")
-  png(outfile, height=1300, width=2800, res=50, pointsize=20)
+  png(outfile, height=1300, width=3500, res=50, pointsize=20)
   
-  par(mfcol=c(3,4))
+  par(mfcol=c(3,5))
   
   
   #Loop through variables
@@ -134,8 +138,9 @@ for (s in 1:length(site_codes)) {
     # and measured with 1 (opposite to Fluxnet but what PALS expects)
     if (any(!is.na(qc_data))) {
       
-      qc_data[qc_data > 0]  <- 2 #replace gap-filled values with a temporary value
-      qc_data[qc_data == 0] <- 1 #set measured to 1
+      
+      qc_data[!(qc_data %in% QC_measured)]  <- 2 #replace gap-filled values with a temporary value
+      qc_data[qc_data %in% QC_measured]     <- 1 #set measured to 1
       qc_data[qc_data == 2] <- 0 #set gap-filled to 0
       
       #If first value missing, set to measured (to avoid an error when PALS
