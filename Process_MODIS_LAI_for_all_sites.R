@@ -5,10 +5,10 @@ library(ncdf4)
 rm(list=ls(all=TRUE))
 
 #Set path
-path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
+path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 #Which fluxnet data to use?
-flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
+flx_path <- path
 
 #Create output folder for met files with processed LAI time series
 outdir <- paste0(flx_path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
