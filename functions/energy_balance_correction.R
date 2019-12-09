@@ -142,8 +142,10 @@ iq <- quantile(ebcf, probs=c(0.25, 0.75), na.rm=TRUE)
 
 iqr <- iq[2] - iq[1]
 
-higher <- iqr*1.5 + iq[2] 
-lower  <- iq[1] - iqr*1.5
+median <- median(ebcf, na.rm=TRUE)
+
+higher <- median + 1.5*iqr #iqr*1.5 + iq[2] 
+lower  <- median - 1.5*iqr #iq[1] - iqr*1.5
 
 
 #Mask value outside range  
