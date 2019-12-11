@@ -287,27 +287,23 @@ for (t in 1:length(qle_corrected)) {
 
 
 
-
-
-
-
-#REMOVE ONCE DEBUGGED ------------------
-t1 <-t #which(!is.na(qle_corrected))[1]  +1
-
-
-print(t1)
-which(data$EBC_CF_METHOD == 1)[1]
-
-print("#--------")
-qle_corrected[t1]
-data$LE_CORR[t1]
-
-print("#--------")
-n_for_ebcf[t1]
-data$EBC_CF_N[t1]
-
-
-#---------------------------------
+# #REMOVE ONCE DEBUGGED ------------------
+# t1 <-t #which(!is.na(qle_corrected))[1]  +1
+# 
+# 
+# print(t1)
+# which(data$EBC_CF_METHOD == 1)[1]
+# 
+# print("#--------")
+# qle_corrected[t1]
+# data$LE_CORR[t1]
+# 
+# print("#--------")
+# n_for_ebcf[t1]
+# data$EBC_CF_N[t1]
+# 
+# 
+# #---------------------------------
 
 
 
@@ -327,6 +323,10 @@ data$EBC_CF_N[t1]
 #These should match for Qle and Qh
 
 ind_missing_m2 <- which(is.na(qle_corrected))
+
+
+#convert time to months/days/hours
+d
 
 
 if (length(ind_missing_m2) > 0) {
@@ -369,10 +369,10 @@ if (length(ind_missing_m2) > 0) {
 }
 
 
-which(data$EBC_CF_METHOD ==2)[1]
-which(!is.na(qle_corrected))[1]
-
-which(!is.na(qle_corrected[ind_missing_m2]))[1]
+# which(data$EBC_CF_METHOD ==2)[1]
+# which(!is.na(qle_corrected))[1]
+# 
+# which(!is.na(qle_corrected[ind_missing_m2]))[1]
 
 
 
@@ -394,6 +394,8 @@ which(!is.na(qle_corrected[ind_missing_m2]))[1]
 ind_missing_m3 <- which(is.na(qle_corrected))
 
 
+
+
 if (length(ind_missing_m3) > 0) {
   
 
@@ -404,8 +406,8 @@ if (length(ind_missing_m3) > 0) {
     #Start and end index for moving window around time step
     #Use a moving window of +/- 5 days and one hour
     #(need to remove one time step at each end to match Fluxnet method)
-    start_time <- time[t] - hrs(24*5)
-    end_time   <- time[t] + hrs(24*5)
+    start_time <- time[t] - hrs(24*5+1)
+    end_time   <- time[t] + hrs(24*5+1)
     
     
     #Current year (do min and max to account for time periods outside data range)
@@ -456,6 +458,11 @@ if (length(ind_missing_m3) > 0) {
   
 
 }
+qle_corrected[t]
+data$LE_CORR[t]
+
+length(which(!is.na(ebcf[time_indices])))
+data$EBC_CF_N[t]
 
 
 
@@ -466,106 +473,203 @@ if (length(ind_missing_m3) > 0) {
 
 
 
+#convert time to months/days/hours
+date_mdh <- format(time, format="%m-%d-%H:%M:%S")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#Initialise
-qle_corrected <- rep(NA, 3)
-qh_corrected  <- rep(NA, 3)
-
-#Method (save for debugging)
-method <- rep(NA, length(qle_all))
-
-#Remove after debugging
-n_for_ebcf <- rep(NA, 3)
-
-
-ts <- c(17189, 17190, 17191)
-
-
-#Loop through time steps
-for (t in 1:length(ts)) {  
+if (length(ind_missing_m3) > 0) {
   
   
-  #Start and end index for moving window around time step
-  #Use a moving window of +/- 15 days
-  #(need to remove one time step at each end to match Fluxnet method)
-  start <- which(time == (time[ts[t]] - hrs(24*15))) + 1
-  end   <- which(time == (time[ts[t]] + hrs(24*15))) - 1
-  
-
-  #Get time of day
-  tstamps <- time_of_day[start:end]
-  
-  #Indices to use for calculating EB correction
-  ind_all <- which(!is.na(tstamps))
-  
-  
-  #Check that at least 5 values available, if not skip time step
-  if (length(ind_all) < 5) {
-    next
-  }
-  
-  
-  #Extract EBCF for this time step moving window
-  ebcf_tstep <- ebcf[start:end]
-  
-  
-  #Initialise
-  qle_corr <- rep(NA, length(ind_all)) #(length(matrix(data=NA, nrow=length(ind_all), ncol=length(start:end))
-  qh_corr  <- rep(NA, length(ind_all)) #matrix(data=NA, nrow=length(ind_all), ncol=length(start:end))
-  
-  
-  #Then correct LE and H separately using each available EBCF
-  for (e in 1:length(ind_all)) {
+  #Loop through incides
+  for (t in ind_missing_m3) {
     
-    qle_corr[e] <- qle_all[ts[t]] * ebcf_tstep[ind_all[e]]
-    qh_corr[e]  <- qh_all[ts[t]] * ebcf_tstep[ind_all[e]]
+    
+    #Start and end index for moving window around time step
+    #Use a moving window of +/- 5 days and one hour
+    #(need to remove one time step at each end to match Fluxnet method)
+    start_time <- format(time[t] - hrs(24*5+1), format="%m-%d-%H:%M:%S")
+    end_time   <- format(time[t] + hrs(24*5+1), format="%m-%d-%H:%M:%S")
+    
+    
+    #Current year (do min and max to account for time periods outside data range)
+    #    start_time_cur <- max(1, which(time == start_time))
+    #   end_time_cur   <- min(length(time), which(time == end_time))
+    
+    #Find same time stamps for other years
+    all_start_times <- which(date_mdh == start_time)
+    all_end_times   <- which(date_mdh == end_time)
+    
+    
+    #If didn't find other years, skip
+    if (any(c(length(all_start_times), length(all_end_times)) == 0)) {
+      next
+    }
+    
+    
+    #Adjust for first/last year
+    if (all_start_times[1] > all_end_times[1]) { #missing first start time
+      all_start_times <- append(1, all_start_times)
+    }
+    if (tail(all_start_times, 1) > tail(all_end_times, 1)) { #missing last end time
+      all_end_times <- append(all_end_times, length(date_mdh))
+    }
+    
+    
+    #Combine current year's moving window and same time window 
+    time_indices <- unlist(sapply(1:length(all_start_times), function(x) all_start_times[x]:all_end_times[x]))
+    
+    
+    #Extract EBCF for this time step moving window
+    #and calculate average
+    ebcf_tstep <- mean(ebcf[time_indices], na.rm=TRUE)
+    
+    
+    #Calculate median and save in method 1 data vectors
+    qle_corrected[t] <- qle_all[t] * ebcf_tstep
+    qh_corrected[t]  <- qh_all[t] * ebcf_tstep
+    
+    #Debugging
+    if (!is.na(ebcf_tstep)) method[t] <- 3
+    
+    
     
   }
   
-  
-  #Calculate median and save in method 1 data vectors
-  qle_corrected[t] <- quantile(qle_corr, probs=0.5)
-  qh_corrected[t]  <- quantile(qh_corr, probs=0.5)
-  
-  #Remove after debugging
-  method[t] <- 1
-  n_for_ebcf[t] <- length(which(!is.na(ebcf_tstep)))
   
 }
 
 
+qle_corrected[t]
+data$LE_CORR[t]
 
-
-
-
-qle_corrected
-data$LE_CORR[ts]
-
-print("-----------")
-
-n_for_ebcf
-data$EBC_CF_N[ts]
+length(which(!is.na(ebcf[time_indices])))
+data$EBC_CF_N[t]
 
 
 
 
 
 
-inds <- c(start:end)[ind_all]
+plot(data$LE_CORR, type='l', col='red')
+lines(qle_corrected)
+
+lines(qle_m3, col='blue')
 
 
 
+
+
+# 
+# 
+# 
+# 
+# 
+# data$EBC_CF_N[t]
+# n_for_ebcf[t]
+# 
+# qle_corrected[t]
+# data$LE_CORR[t]
+# 
+# data$EBC_CF_METHOD[t]
+# method[t]
+# 
+# 
+# qle_corr
+# which(qle_corr == data$LE_CORR[t])
+# 
+# 
+# 
+# 
+# 
+# #Initialise
+# qle_corrected <- rep(NA, 3)
+# qh_corrected  <- rep(NA, 3)
+# 
+# #Method (save for debugging)
+# method <- rep(NA, length(qle_all))
+# 
+# #Remove after debugging
+# n_for_ebcf <- rep(NA, 3)
+# 
+# ts <- 17230 #c(17189, 17190, 17191)
+# 
+# 
+# #Loop through time steps
+# for (t in 1:length(ts)) {
+# 
+# 
+#   #Start and end index for moving window around time step
+#   #Use a moving window of +/- 15 days
+#   #(need to remove one time step at each end to match Fluxnet method)
+#   start <- which(time == (time[ts[t]] - hrs(24*15))) + 1
+#   end   <- which(time == (time[ts[t]] + hrs(24*15))) - 1
+# 
+# 
+#   #Get time of day
+#   tstamps <- time_of_day[start:end]
+# 
+#   #Indices to use for calculating EB correction
+#   ind_all <- which(!is.na(tstamps))
+# 
+# 
+#   #Check that at least 5 values available, if not skip time step
+#   if (length(ind_all) < 5) {
+#     next
+#   }
+# 
+# 
+#   #Extract EBCF for this time step moving window
+#   ebcf_tstep <- ebcf[start:end]
+# 
+# 
+#   #Initialise
+#   qle_corr <- rep(NA, length(ind_all)) #(length(matrix(data=NA, nrow=length(ind_all), ncol=length(start:end))
+#   qh_corr  <- rep(NA, length(ind_all)) #matrix(data=NA, nrow=length(ind_all), ncol=length(start:end))
+# 
+# 
+#   #Then correct LE and H separately using each available EBCF
+#   for (e in 1:length(ind_all)) {
+# 
+#     qle_corr[e] <- qle_all[ts[t]] * ebcf_tstep[ind_all[e]]
+#     qh_corr[e]  <- qh_all[ts[t]] * ebcf_tstep[ind_all[e]]
+# 
+#   }
+# 
+# 
+#   #Calculate median and save in method 1 data vectors
+#   qle_corrected[t] <- quantile(qle_corr, probs=0.5)
+#   qh_corrected[t]  <- quantile(qh_corr, probs=0.5)
+# 
+#   #Remove after debugging
+#   method[t] <- 1
+#   n_for_ebcf[t] <- length(which(!is.na(ebcf_tstep)))
+# 
+# }
+# 
+# 
+# 
+# 
+# 
+# 
+# qle_corrected
+# data$LE_CORR[ts]
+# 
+# print("-----------")
+# 
+# n_for_ebcf
+# data$EBC_CF_N[ts]
+# 
+# 
+# 
+# qle_corr
+# which(qle_corr == data$LE_CORR[ts[1]])
+# 
+# 
+# 
+# 
+# 
+# inds <- c(start:end)[ind_all]
+# 
+# 
+# 
