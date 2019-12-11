@@ -73,7 +73,7 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
     #Check that have all variables available
     if (all(c(qle_name, qh_name, rnet_name, qg_name) %in% vars)) {
       
-      #Get corrected fluxes
+      #Calculate corrected fluxes
       ebcf_corrected <- energy_balance_correction(qle=var_data[qle_name], 
                                                   qle_qc=var_data[paste0(qle_name, "_qc")], 
                                                   qh=var_data[qh_name], 
@@ -82,20 +82,55 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
                                                   qg=var_data[qg_name], 
                                                   qg_qc=var_data[paste0(qg_name, "_qc")], 
                                                   time=time_date, tstepsize=time[2] - time[1])
+      
+      
+      
+
+      
+      #Add corrected fluxes to variables
+      vars <- append(vars, c(qle_cor_name, qh_cor_name))
+      
+      
+      ### Add Qle to nc handle ###
+      
+      #Add variable
+      flux_nc[["var"]][[qle_cor_name]] <- flux_nc[["var"]][[qle_name]]
+      
+      #Change variable name and longname
+      flux_nc[["var"]][[qle_cor_name]]$name     <- qle_cor_name
+      flux_nc[["var"]][[qle_cor_name]]$longname <- paste0(flux_nc[["var"]][[qle_cor_name]]$longname, 
+                                                          ", energy balance corrected")
+      
+      #And copy attribute data
+      att_data[[qle_cor_name]] <- att_data[[qle_name]] 
+      
+      #Add to variable data  
+      var_data[[qle_cor_name]] <- ebcf_corrected$Qle
+      
+      
+      
+      ### Add Qh to nc handle ###
+      
+      #Add variable
+      flux_nc[["var"]][[qh_cor_name]] <- flux_nc[["var"]][[qh_name]]
+      
+      #Change variable name and longname
+      flux_nc[["var"]][[qh_cor_name]]$name     <- qh_cor_name
+      flux_nc[["var"]][[qh_cor_name]]$longname <- paste0(flux_nc[["var"]][[qh_cor_name]]$longname, 
+                                                         ", energy balance corrected")
+      
+      #And copy attribute data
+      att_data[[qh_cor_name]] <- att_data[[qh_name]] 
+      
+      #Add to variable data  
+      var_data[[qh_cor_name]] <- ebcf_corrected$Qh
+      
+      
+      
+      
     }
   }
  
-  
-  
-  
-  #Add new variables to netcdf handle
-  
-  
-  qle_cor_name
-  "W/m2"
-  
-  
-  
   
   
   
@@ -110,7 +145,7 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
     ### Adjust length of time-varying variables ##
     
     #Get dimensions for each variable
-    dims <- lapply(vars, function(x) sapply(flux_nc[[s]][["var"]][[x]][["dim"]], function(dim) dim[["name"]]))
+    dims <- lapply(vars, function(x) sapply(flux_nc[["var"]][[x]][["dim"]], function(dim) dim[["name"]]))
     
     # #Find which variables are time-varying
     var_inds <- which(sapply(dims, function(x) any(x == "time")))
