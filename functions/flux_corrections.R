@@ -60,8 +60,6 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
   
   
   
-  
-  
   #################################
   ### Energy balance correction ###
   #################################
@@ -70,17 +68,17 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
   if (!(qle_cor_name %in% vars)) {
     
       
-    #Check that have all variables available
+    #Check that have all variables available to do correction
     if (all(c(qle_name, qh_name, rnet_name, qg_name) %in% vars)) {
       
       #Calculate corrected fluxes
-      ebcf_corrected <- energy_balance_correction(qle=var_data[qle_name], 
-                                                  qle_qc=var_data[paste0(qle_name, "_qc")], 
-                                                  qh=var_data[qh_name], 
-                                                  qh_qc=var_data[paste0(qh_name, "_qc")], 
-                                                  rnet=var_data[rnet_name], 
-                                                  qg=var_data[qg_name], 
-                                                  qg_qc=var_data[paste0(qg_name, "_qc")], 
+      ebcf_corrected <- energy_balance_correction(qle=var_data[[qle_name]], 
+                                                  qle_qc=var_data[[paste0(qle_name, "_qc")]], 
+                                                  qh=var_data[[qh_name]], 
+                                                  qh_qc=var_data[[paste0(qh_name, "_qc")]], 
+                                                  rnet=var_data[[rnet_name]], 
+                                                  qg=var_data[[qg_name]], 
+                                                  qg_qc=var_data[[paste0(qg_name, "_qc")]], 
                                                   time=time_date, tstepsize=time[2] - time[1])
       
       
@@ -105,7 +103,7 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
       att_data[[qle_cor_name]] <- att_data[[qle_name]] 
       
       #Add to variable data  
-      var_data[[qle_cor_name]] <- ebcf_corrected$Qle
+      var_data[[qle_cor_name]] <- ebcf_corrected$qle
       
       
       
@@ -123,7 +121,7 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
       att_data[[qh_cor_name]] <- att_data[[qh_name]] 
       
       #Add to variable data  
-      var_data[[qh_cor_name]] <- ebcf_corrected$Qh
+      var_data[[qh_cor_name]] <- ebcf_corrected$qh
       
       
       
@@ -138,6 +136,14 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
   ### Adjust time period ###
   ##########################
   
+  
+  #Get years to process
+  start_yr <- qc_info$Start_year
+  
+  end_yr   <- qc_info$End_year
+  
+  
+  
   #If need to adjust
   if (start_yr > 1 | end_yr < 0) {
     
@@ -149,6 +155,20 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
     
     # #Find which variables are time-varying
     var_inds <- which(sapply(dims, function(x) any(x == "time")))
+    
+    
+    #New start and end year
+    new_start_year <- years[1] + start_yr -1 
+    new_end_year   <- years[length(years)] + end_yr #end_yr negative so need to sum
+    
+    
+    #Start and end indices
+    start_ind <- which(years == new_start_year)[1]
+    end_ind   <- tail(which(years == new_end_year), 1)
+    
+    
+    #New time vector
+    time_var <- seq(0, by=60*60*24 / tsteps_per_day, length.out=length(c(start_ind:end_ind)))
     
     
     

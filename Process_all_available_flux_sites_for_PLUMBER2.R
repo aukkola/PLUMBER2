@@ -112,26 +112,26 @@ for(k in 1:length(tstep)){
   
 }
 
-# 
-# #Loops through sites
-# 
-#   w=infiles[[1]]
-#   x=site_codes[[1]]
-#   y=ERA_files[[1]]
-#   z=datasetversions[[1]]
-#   convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
-#                                                                        datasetversion=z, met_gapfill="ERAinterim", 
-#                                                                        flux_gapfill="statistical", era_file=y,
-#                                                                        missing_met=missing_met, missing_flux=missing_flux,
-#                                                                        gapfill_met_tier1=gapfill_met_tier1,
-#                                                                        gapfill_met_tier2=gapfill_met_tier2,
-#                                                                        gapfill_flux=gapfill_flux, min_yrs=min_yrs, 
-#                                                                        #model="CABLE", 
-#                                                                        check_range_action="warn",
-#                                                                        include_all_eval=TRUE)
-#           
-# 
-# 
+
+#Loops through sites
+
+  # w=infiles[[1]]
+  # x=site_codes[[1]]
+  # y=ERA_files[[1]]
+  # z=datasetversions[[1]]
+  # convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
+  #                                                                      datasetversion=z, met_gapfill="ERAinterim",
+  #                                                                      flux_gapfill="statistical", era_file=y,
+  #                                                                      missing_met=missing_met, missing_flux=missing_flux,
+  #                                                                      gapfill_met_tier1=gapfill_met_tier1,
+  #                                                                      gapfill_met_tier2=gapfill_met_tier2,
+  #                                                                      gapfill_flux=gapfill_flux, min_yrs=min_yrs,
+  #                                                                      #model="CABLE",
+  #                                                                      check_range_action="warn",
+  #                                                                      include_all_eval=TRUE)
+  # 
+  # 
+
 #   #Loops through sites
    # mapply( function(w,x,y,z) convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
    #                                                                        datasetversion=z, met_gapfill="ERAinterim",

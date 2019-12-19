@@ -67,10 +67,10 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   
   #Find time steps where Rnet and Qg are measured, and Qh and Qle are observed or high quality gap-filled
   
-  poor_quality_ind <- unique(c(which(qle_all_qc > 1 | qle_all_qc == -9999), 
-                               which(qh_all_qc > 1 | qh_all_qc == -9999),
-                               which(qg_qc != 0 | qg_qc == -9999),
-                               which(rnet == -9999)))#,
+  poor_quality_ind <- unique(c(which(qle_all_qc > 1 | is.na(qle_all_qc)), 
+                               which(qh_all_qc > 1 | is.na(qh_all_qc)),
+                               which(qg_qc != 0 | is.na(qg_qc)),
+                               which(is.na(rnet))))#,
                                #which(qg == -9999),
                                #which(qle_all == -9999),
                                #which(qh_all == -9999)))#,
@@ -166,8 +166,8 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   #LEcorr, LEcorr75, Hcorr25, Hcorr, Hcorr75).
   
   
-  st <- Sys.time()
-  
+  # st <- Sys.time()
+  # 
   
   #Initialise
   qle_corrected <- rep(NA, length(qle_all))
@@ -235,10 +235,10 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   
   
   
-    
-  et <- Sys.time()
-  et-st
-  
+  #   
+  # et <- Sys.time()
+  # et-st
+  # 
   
   
   
@@ -277,8 +277,8 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   #Find incides of corrected Qle and Qh that are missing after applying Method 1
   #These should match for Qle and Qh
  
-  
-  st <- Sys.time()
+  # 
+  # st <- Sys.time()
 
   
   
@@ -325,8 +325,8 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
     
   }
   
-  et <- Sys.time()
-  et-st
+  # et <- Sys.time()
+  # et-st
   
   
   
@@ -418,23 +418,23 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
     
   }
   
-  
-  et <- Sys.time()
-  et-st
-  
-  
-  plot(data$LE_CORR, type='l', col="red")
-  lines(qle_corrected)
-  
-  lines(qle_all, col='blue')
-  
-  plot(data$H_CORR, type='l', col="red")
-  lines(qh_corrected)
-  
-  
-  plot(ebcf_m3, type='l')
-  
-  
+  # 
+  # et <- Sys.time()
+  # et-st
+  # 
+  # 
+  # plot(data$LE_CORR, type='l', col="red")
+  # lines(qle_corrected)
+  # 
+  # lines(qle_all, col='blue')
+  # 
+  # plot(data$H_CORR, type='l', col="red")
+  # lines(qh_corrected)
+  # 
+  # 
+  # plot(ebcf_m3, type='l')
+  # 
+  # 
   #If using all available years for method 3....
   
   

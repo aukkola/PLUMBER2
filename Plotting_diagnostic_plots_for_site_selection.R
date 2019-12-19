@@ -17,7 +17,7 @@ vars <- c("SWdown", "LWdown", "Precip", "Tair", "Qair", "Wind", "CO2air",
           "Rnet", "Qle", "Qh", "Qg", "Ebal", "LAI_MODIS", "LAI_Copernicus")
   
 #Variable types
-var_type <- c("Met", "Met", "Met", "Met", "Met", "Met", "Flux",
+var_type <- c("Met", "Met", "Met", "Met", "Met", "Met", "Met",
               "Flux", "Flux", "Flux", "Flux", "Flux", "Met", "Met") 
 
 

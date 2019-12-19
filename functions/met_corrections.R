@@ -69,7 +69,7 @@ met_corrections <- function(met_nc, outfile_met, site_code, qc_info, new_qc)
   
   #If replacing CO2 with global CO2
   
-  if (qc_info$Global_CO2[site_ind]) {
+  if (qc_info$Global_CO2) {
     
     #loop through years
     co2_ts <- sapply(years, function(x) global_co2[which(global_co2 == x), 2])
@@ -118,6 +118,15 @@ met_corrections <- function(met_nc, outfile_met, site_code, qc_info, new_qc)
   end_yr   <- qc_info$End_year
   
   
+  ### Adjust length of time-varying variables ##
+  
+  #Get dimensions for each variable
+  dims <- lapply(vars, function(x) sapply(met_nc[["var"]][[x]][["dim"]], function(dim) dim[["name"]]))
+  
+  # #Find which variables are time-varying (used later so leave outside if-loop)
+  var_inds <- which(sapply(dims, function(x) any(x == "time")))
+  
+  
   
   #If need to adjust
   if (start_yr > 1 | end_yr < 0) {
@@ -134,18 +143,7 @@ met_corrections <- function(met_nc, outfile_met, site_code, qc_info, new_qc)
     
     #New time vector
     time_var <- seq(0, by=60*60*24 / tsteps_per_day, length.out=length(c(start_ind:end_ind)))
-    
-    
-    
-    ### Adjust length of time-varying variables ##
-    
-    #Get dimensions for each variable
-    dims <- lapply(vars, function(x) sapply(met_nc[["var"]][[x]][["dim"]], function(dim) dim[["name"]]))
-    
-    # #Find which variables are time-varying
-    var_inds <- which(sapply(dims, function(x) any(x == "time")))
-    
-    
+  
     
     #Change dimensions and values for time-varying data
     for (v in vars[var_inds]) {

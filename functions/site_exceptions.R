@@ -1,12 +1,32 @@
 site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   
+    #NB. all indices to fix were found manually
+  
+    #Variables available
+    vars <- names(var_data)
+  
   
   if (site_code == "BE-Lon") {
+    
     #Longwave data needs fixing    
+  
+    ind_start <- 74000
+    ind_end   <- 92500
     
+    #Check that Tair units are in Kelvin and that RH is available
+    if (att_data$Tair$units != "K") stop("Wrong LWdown units")
+    if (length(which(vars == "RH")) == 0) stop("RH not available")
     
+    lwdown <- SynthesizeLWdown(TairK = var_data$Tair[ind_start:ind_end], 
+                               RH = var_data$RH[ind_start:ind_end])
     
-    browser()
+    #Add corrected flux to variable data and QC flag
+    var_data$LWdown[ind_start:ind_end]    <- lwdown  
+    var_data$LWdown_qc[ind_start:ind_end] <- qc_val 
+    
+    #Add new gapfilled % to attribute data 
+    att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
+                                      length(var_data$LWdown_qc) * 100, digits=1)
     
     
     
@@ -40,6 +60,8 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   } else if (site_code == "DK-Sor") {
     #Correct CO2 by fitting a linear slope to data, and using that to predict CO2
     
+    co2 <- var_data$CO2_air
+      
     
     browser()
     
