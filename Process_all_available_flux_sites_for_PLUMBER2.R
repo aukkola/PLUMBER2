@@ -1,8 +1,16 @@
+#NB. needs these to work on storm servers (because of package lutz) !!!!!!!!!
+
+# module add proj/4.9.3
+# module add python/2.7.13
+# module add perl/5.24.1
+# module add gdal/2.1.3
+# module add gcc/6.3.0
+# 
+
 #devtools::install_github("aukkola/FluxnetLSM", ref="master") #Package broken for some reason, must be installed locally
 
 setwd("/srv/ccrc/data04/z3509830/Fluxnet_data//All_flux_sites_processed_PLUMBER2/FluxnetLSM")
-#not sure why no-lock option is needed but won't install otherwise
-install.packages(".", repos=NULL, type='source', INSTALL_opts = c('--no-lock')) 
+install.packages(".", repos=NULL, type='source') 
 
 
 library(FluxnetLSM)  # convert_fluxnet_to_netcdf
@@ -81,7 +89,7 @@ for(k in 1:length(tstep)){
   
   #Initialise clusters (using 2 cores here)
   cl <- makeCluster(getOption('cl.cores', ncl))
-  
+
   #Import variables to cluster
   clusterExport(cl, "out_path_flx")
   clusterExport(cl, "convert_fluxnet_to_netcdf")
@@ -91,46 +99,46 @@ for(k in 1:length(tstep)){
   if(exists("gapfill_met_tier2"))   {clusterExport(cl, "gapfill_met_tier2")}
   if(exists("gapfill_flux"))   {clusterExport(cl, "gapfill_flux")}
   if(exists("min_yrs"))   {clusterExport(cl, "min_yrs")}
-  
-  
+
+
   #Loops through sites
   clusterMap(cl=cl, function(w,x,y,z) tryCatch(convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
-                                                                         datasetversion=z, met_gapfill="ERAinterim", 
+                                                                         datasetversion=z, met_gapfill="ERAinterim",
                                                                          flux_gapfill="statistical", era_file=y,
                                                                          missing_met=missing_met, missing_flux=missing_flux,
                                                                          gapfill_met_tier1=gapfill_met_tier1,
                                                                          gapfill_met_tier2=gapfill_met_tier2,
-                                                                         gapfill_flux=gapfill_flux, min_yrs=min_yrs, 
-                                                                         #model="CABLE", 
+                                                                         gapfill_flux=gapfill_flux, min_yrs=min_yrs,
+                                                                         #model="CABLE",
                                                                          check_range_action="warn",
                                                                          include_all_eval=TRUE),
                                                error = function(e) NULL),
              w=infiles, x=site_codes, y=ERA_files, z=datasetversions)
-  
+
   stopCluster(cl)
   
   
 }
 
-
-#Loops through sites
-
-  # w=infiles[[1]]
-  # x=site_codes[[1]]
-  # y=ERA_files[[1]]
-  # z=datasetversions[[1]]
-  # convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
-  #                                                                      datasetversion=z, met_gapfill="ERAinterim",
-  #                                                                      flux_gapfill="statistical", era_file=y,
-  #                                                                      missing_met=missing_met, missing_flux=missing_flux,
-  #                                                                      gapfill_met_tier1=gapfill_met_tier1,
-  #                                                                      gapfill_met_tier2=gapfill_met_tier2,
-  #                                                                      gapfill_flux=gapfill_flux, min_yrs=min_yrs,
-  #                                                                      #model="CABLE",
-  #                                                                      check_range_action="warn",
-  #                                                                      include_all_eval=TRUE)
-  # 
-  # 
+# 
+# #Loops through sites
+#    w=infiles[[1]]
+#    x=site_codes[[1]]
+#    y=ERA_files[[1]]
+#    z=datasetversions[[1]]
+#    convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
+#                                                                         datasetversion=z, met_gapfill="ERAinterim",
+#                                                                         flux_gapfill="statistical", era_file=y,
+#                                                                         missing_met=missing_met, missing_flux=missing_flux,
+#                                                                         gapfill_met_tier1=gapfill_met_tier1,
+#                                                                         gapfill_met_tier2=gapfill_met_tier2,
+#                                                                         gapfill_flux=gapfill_flux, min_yrs=min_yrs,
+#                                                                         #model="CABLE",
+#                                                                         check_range_action="warn",
+#                                                                         include_all_eval=TRUE)
+# 
+# 
+# 
 
 #   #Loops through sites
    # mapply( function(w,x,y,z) convert_fluxnet_to_netcdf(infile=w, site_code=x, out_path=out_path_flx,
