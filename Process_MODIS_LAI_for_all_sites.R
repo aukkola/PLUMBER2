@@ -1,5 +1,5 @@
 library(ncdf4)
-
+library(zoo)
 
 #clear R environment
 rm(list=ls(all=TRUE))
@@ -53,20 +53,21 @@ pixel_no <- c(7, 8, 9, 12, 13, 14, 17, 18, 19)
 
 qc_flags <- c(0, 2, 24 ,26, 32, 34, 56, 58)
 
+#Data path
+modis_path <- paste0(path, "/MODIS_LAI_time_series/Raw_data")
 
 
 #Loop through sites
 for (s in 1:length(site_codes)) {
   
-  modis_path <- paste0(path, "/MODIS_LAI_time_series/Raw_data")
-  
+  #Find files
   lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m_"), 
                          full.names=TRUE)
   
-  qc_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_FparLai_QC"), 
+  qc_file  <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_FparLai_QC"), 
                          full.names=TRUE)
   
-  sd_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m_"), 
+  sd_file  <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_LaiStdDev_500m_"), 
                          full.names=TRUE)
   
   #Check if found site file
@@ -85,13 +86,14 @@ for (s in 1:length(site_codes)) {
   lai <- read.csv(lai_file, header=TRUE)
   qc  <- read.csv(qc_file, header=TRUE)
   sd  <- read.csv(sd_file, header=TRUE)
-  
-  #First mask out bad LAI values
-  lai_masked <- lai 
-  lai_masked$value[!(qc$value %in% qc_flags)] <- NA
+ 
   
   #Number of time steps
-  no_tsteps <- dim(lai)[1] / max(lai$pixel)
+  
+  #If data files have been acquired on different days from MODIS
+  #server, they might be different lengths so take minimum. adjust further down
+  
+  no_tsteps <- min(nrow(lai), nrow(sd), nrow(qc)) / max(lai$pixel)
   
   
   #Extract 3 x3 pixels
@@ -105,14 +107,15 @@ for (s in 1:length(site_codes)) {
   #Loop through pixels
   for (p in 1:length(pixel_no)) {
     
-    #Get time series for pixel and scale using scale factor
-    lai_pixel[,p] <- lai$value[which(lai$pixel == pixel_no[p])] * lai$scale[1]
-    sd_pixel[,p]  <- sd$value[which(sd$pixel == pixel_no[p])] * sd$scale[1]
-    qc_pixel[,p]  <- qc$value[which(sd$pixel == pixel_no[p])] 
+    #Get time series for pixel and scale using scale factor (and adjust for different lengths with min_dim)
+    lai_pixel[,p] <- lai$value[which(lai$pixel == pixel_no[p])][1:no_tsteps] * lai$scale[1]
+    sd_pixel[,p]  <- sd$value[which(sd$pixel == pixel_no[p])][1:no_tsteps] * sd$scale[1]
+    qc_pixel[,p]  <- qc$value[which(sd$pixel == pixel_no[p])][1:no_tsteps] 
 
   }
   
-  
+
+   
   ##################################
   ### Mask out poor quality data ###
   ##################################
@@ -124,6 +127,7 @@ for (s in 1:length(site_codes)) {
   #Also mask out where sd really low (likely cloud effects)
   sd_pixel  <- replace(sd_pixel, sd_pixel < 0.1, NA)
   lai_pixel <- replace(lai_pixel, is.na(sd_pixel), NA)
+  
   
   ### Average each time step ###
   
@@ -234,12 +238,80 @@ for (s in 1:length(site_codes)) {
     
   }
   
+  
+  ##########################
+  ### Create climatology ###
+  ##########################
+  
+  
+  #Each year has 46 time steps, but first and last year are incomplete
+  
+  #Create climatological average for each time step
+  
+  #Check that time series starts on 1 Jan
+  if (!(format(lai_time[1], "%m-%d") == "01-01")) { stop("Time series does not start 1 Jan") }
+  
+  
+  #Find time steps for last (incomplete) year
+  last_year <- which(grepl(modis_endyr, lai_time))
+  
+  #MODIS has 46 time steps per year
+  no_tsteps <- length(which(grepl(modis_startyr , lai_time)))
+
+  #Initialise
+  modis_clim <- vector(length=no_tsteps)
+  
+  for (c in 1:no_tsteps) {
+    
+    #Indices for whole years
+    inds <- seq(c, by=no_tsteps, length.out=floor(length(lai_time)/no_tsteps))
+      
+    #Add last year if applicable
+    if( c <= length(last_year)) { inds <- append(inds, last_year[c]) }
+    
+    #Calculate average for time step
+    modis_clim[c] <- mean(smooth_lai_ts[inds], na.rm=TRUE)
+    
+  }
+  
+  #Check that no NA values
+  if (any(is.na(modis_clim))) {
+    
+    missing <- which(is.na(modis_clim))
+    
+    #Use the mean of next and previous non-NA value to gapfill climatology
+    for(m in missing) { 
+      previous_val    <- modis_clim[tail(which(!is.na(modis_clim[1:max(c(1, m-1))])), 1)]
+      next_val        <- modis_clim[m + which(!is.na(modis_clim[(m+1):length(modis_clim)]))[1]]
+      modis_clim[m]   <- mean(c(previous_val, next_val), na.rm=TRUE)
+    }
+  }
+  
+
+  
+  ###################################
+  ### Calculate running anomalies ###
+  ###################################
+  
+  #Initialise
+  lai_clim_anomalies <- rep(NA, length(lai_time))
+  
+  #Repeat climatology for whole time series
+  modis_clim_all <- rep_len(modis_clim, length(lai_time))
+  
+  
+  #Calculate running mean anomaly (+/- 6 months either side of each time step)
+  anomaly <- rollmean(smooth_lai_ts - modis_clim_all, k=12, fill=NA)
+
+  #Add rolling mean anomaly to climatology
+  lai_clim_anomalies <- modis_clim_all + anomaly  
+  
+
+  
   ###################################
   ### Match with site time series ###
   ###################################
   
-  
-  #Each year has 46 time steps, but first and last year are incomplete
   
   #Get timing info for site
   site_start_time <- ncatt_get(site_nc[[s]], "time")$units
@@ -252,89 +324,43 @@ for (s in 1:length(site_codes)) {
   nyr        <- round(obs_length/(site_tstep_size*365))
   endyr      <- startyr + nyr - 1 
   
+    
+  #Add climatological values to smoothed lai time series
   
-  #Need to create climatological average if site time series starts before modis,
-  #or missing time steps were found
-  #(use 2003 as modis start year to test this as modis starts halfway through 2002)
-  if ((startyr < modis_startyr) | any(is.na(smooth_lai_ts))) {
+  if ((startyr < modis_startyr)) {
     
-    ### Construct modis climatology ###
+    #Overwrite original time series with new extended data
+    lai_clim_anomalies <- append(rep(modis_clim, modis_startyr - startyr), 
+                                 lai_clim_anomalies)
     
-    #Check that time series starts on 1 Jan
-    if (!(format(lai_time[1], "%m-%d") == "01-01")) { stop("Time series does not start 1 Jan") }
-    
-    
-    #Find time steps for last (incomplete) year
-    last_year <- which(grepl(modis_endyr, lai_time))
-    
-    #MODIS has 46 time steps per year
-    no_tsteps <- length(which(grepl(modis_startyr , lai_time)))
-
-    #Initialise
-    modis_clim <- vector(length=no_tsteps)
-    
-    for (c in 1:no_tsteps) {
+    #Add new time stamps
+    extended_lai_time <- vector()
+    for (y in startyr:(modis_startyr-1)) {
       
-      #Indices for whole years
-      inds <- seq(c, by=no_tsteps, length.out=floor(length(lai_time)/no_tsteps))
-        
-      #Add last year if applicable
-      if( c <= length(last_year)) { inds <- append(inds, last_year[c]) }
-      
-      #Calculate average for time step
-      modis_clim[c] <- mean(smooth_lai_ts[inds], na.rm=TRUE)
-      
+      extended_lai_time <- append(extended_lai_time, seq.Date(as.Date(paste0(y, "-01-01")), 
+                                                              by=lai_time[2]-lai_time[1], length.out=no_tsteps))
     }
     
-    #Check that no NA values
-    if (any(is.na(modis_clim))) {
-      
-      missing <- which(is.na(modis_clim))
-      
-      #Use the mean of next and previous non-NA value to gapfill climatology
-      for(m in missing) { 
-        previous_val <- modis_clim[tail(which(!is.na(modis_clim[1:max(c(1, m-1))])), 1)]
-        next_val     <- modis_clim[m + which(!is.na(modis_clim[(m+1):length(modis_clim)]))[1]]
-        modis_clim[m]   <- mean(c(previous_val, next_val), na.rm=TRUE)
-      }
-    }
+    #Overwrite lai_time with new time series
+    lai_time <- append(extended_lai_time, lai_time)
     
-
-    
-    #Add climatological values to smoothed lai time series
-    
-    if ((startyr < modis_startyr)) {
-      
-      #Overwrite original time series with new extended data
-      smooth_lai_ts <- append(rep(modis_clim, modis_startyr - startyr), 
-                              smooth_lai_ts)
-      
-      #Add new time stamps
-      extended_lai_time <- vector()
-      for (y in startyr:(modis_startyr-1)) {
-        
-        extended_lai_time <- append(extended_lai_time, seq.Date(as.Date(paste0(y, "-01-01")), 
-                                                                by=lai_time[2]-lai_time[1], length.out=no_tsteps))
-      }
-      
-      #Overwrite lai_time with new time series
-      lai_time <- append(extended_lai_time, lai_time)
-      
-    }
-
-    
-    #Check if remaining NA values from missing time steps, gapfill if found
-    if (any(is.na(smooth_lai_ts))) {
-      
-      #Find missing values
-      missing <- which(is.na(smooth_lai_ts))
-     
-      #Repeat climatology for all years and gapfill time series
-      clim_all_yrs <- rep(modis_clim, floor(length(lai_time)/no_tsteps))
-      smooth_lai_ts[missing] <- clim_all_yrs[missing]
-  
-    }
   }
+
+    
+  #Check if remaining NA values from missing time steps, gapfill if found
+  if (any(is.na(lai_clim_anomalies))) {
+    
+    #Find missing values
+    missing <- which(is.na(lai_clim_anomalies))
+   
+    #Repeat climatology for all years and gapfill time series
+    clim_all_yrs <- rep(modis_clim, floor(length(lai_time)/no_tsteps))
+    lai_clim_anomalies[missing] <- clim_all_yrs[missing]
+
+  }
+  
+    
+    
   
   
   #Find modis time step corresponding to site start time
@@ -342,7 +368,7 @@ for (s in 1:length(site_codes)) {
   end_ind   <- tail(which(grepl(endyr, lai_time)), 1) #Last index of end year
   
   #Extract MODIS time steps matching site
-  modis_ts_for_site   <- smooth_lai_ts[start_ind:end_ind]
+  modis_ts_for_site   <- lai_clim_anomalies[start_ind:end_ind]
   modis_time_for_site <- lai_time[start_ind:end_ind]
   
   
@@ -370,8 +396,8 @@ for (s in 1:length(site_codes)) {
     }
     
   }
-  
-  
+ 
+   
   #Check that the number of time steps match
   if (length(modis_tseries) != length(site_time)) stop("MODIS and site time steps don't match")
   
