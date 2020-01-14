@@ -100,27 +100,35 @@ print("Batch processing finished")
 #For some reason, batch processing is not retrieving all sites
 #Get these separately 
 
-sites_fetched <- sapply(list.files(outdir, pattern="_Lai_500m_"),
+
+sites_fetched_lai <- sapply(list.files(outdir, pattern="_Lai_500m_"),
                         function(x) strsplit(x, "_")[[1]][1])
 
+sites_fetched_sd <- sapply(list.files(outdir, pattern="_LaiStdDev_500m_"),
+                            function(x) strsplit(x, "_")[[1]][1])
+
+
+sites_fetched_qc <- sapply(list.files(outdir, pattern="_FparLai_QC_"),
+                            function(x) strsplit(x, "_")[[1]][1])
+
+
 #Find missing sites
-missing_ind <- which(!(sites_to_fetch$site_name %in% sites_fetched))
+missing_ind_lai <- which(!(sites_to_fetch$site_name %in% sites_fetched_lai))
+missing_ind_sd  <- which(!(sites_to_fetch$site_name %in% sites_fetched_sd))
+missing_ind_qc  <- which(!(sites_to_fetch$site_name %in% sites_fetched_qc))
 
 
-if (length(missing_ind) > 0) {
-  
-  for (s in missing_ind) {
-    
-    
-    print(paste0("Processing site ", sites_to_fetch$site_name[s]))
+#Get missing LAI
+if (length(missing_ind_lai) > 0) {
+  for (s in missing_ind_lai) {
+
+    print(paste0("LAI: processing site ", sites_to_fetch$site_name[s]))
     
     #Get coordinates
     lat=sites_to_fetch$lat[s]
     lon=sites_to_fetch$lon[s]
     
-    
     #Get LAI
-    
     mt_subset(product = product, lat = lat, lon = lon,
               band = band_lai, start = "2000-01-01",
               end = format(Sys.time(), "%Y-%m-%d"),
@@ -128,8 +136,19 @@ if (length(missing_ind) > 0) {
               site_name = as.character(sites_to_fetch$site_name[s]),
               out_dir = outdir, internal=FALSE)
     
+  }
+}
+
     
+#Get missing SD
+if (length(missing_ind_sd) > 0) {
+  for (s in missing_ind_sd) {
     
+    print(paste0("SD: processing site ", sites_to_fetch$site_name[s]))
+    
+    #Get coordinates
+    lat=sites_to_fetch$lat[s]
+    lon=sites_to_fetch$lon[s]
     
     #Get LAI SD
     mt_subset(product = product, lat = lat, lon = lon,
@@ -139,9 +158,19 @@ if (length(missing_ind) > 0) {
               site_name = as.character(sites_to_fetch$site_name[s]),
               out_dir = outdir, internal=FALSE)
     
+  }
+}
+
+
+#Get missing QC
+if (length(missing_ind_qc) > 0) {
+  for (s in missing_ind_qc) {
     
+    print(paste0("QC: processing site ", sites_to_fetch$site_name[s]))
     
-    
+    #Get coordinates
+    lat=sites_to_fetch$lat[s]
+    lon=sites_to_fetch$lon[s]
     
     #Get LAI QC
     mt_subset(product = product, lat = lat, lon = lon,
@@ -150,11 +179,16 @@ if (length(missing_ind) > 0) {
               km_lr = km, km_ab = km,
               site_name = as.character(sites_to_fetch$site_name[s]),
               out_dir = outdir, internal=FALSE)
-
+    
   }
-  
 }
 
+
+    
+    
+    
+    
+    
 
 
 
