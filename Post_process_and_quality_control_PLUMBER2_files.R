@@ -5,6 +5,7 @@
 library(ncdf4)
 library(gsheet)
 library(parallel)
+library(chron)
 
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
@@ -16,6 +17,8 @@ source(paste0(path, "/scripts/functions/plot_timeseries.R"))
 source(paste0(path, "/scripts/functions/energy_balance_correction.R"))
 source(paste0(path, "/scripts/functions/met_corrections.R"))
 source(paste0(path, "/scripts/functions/flux_corrections.R"))
+source(paste0(path, "/scripts/functions/gapfill_postprocess.R"))
+
 
 
 
@@ -77,12 +80,15 @@ met_nc <- lapply(met_files, nc_open, write=TRUE)
 flux_files <- list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Flux/"), full.names=TRUE)
 
 #Open file handles
-flux_nc <- lapply(flux_files, nc_open, write=TRUE)
+#flux_nc <- lapply(flux_files, nc_open, write=TRUE)
 
 
 
 #Get site codes
 site_codes <- sapply(met_nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
+
+#Close met file handles
+lapply(met_nc, nc_close)
 
 
 
@@ -135,23 +141,30 @@ good_sites <- which(status != "kill")
 # 
 # 
 
+#Turn into a list so can be passed to functions better
+qc_info_list <- lapply(1:nrow(qc_info), function(x) qc_info[x,])
 
 
 #Initialise parallel cores
-
 cl <- makeCluster(getOption('cl.cores', 12))
 
-clusterExport(cl, 'good_sites')
-clusterExport(cl, 'qc_info')
+clusterExport(cl, 'qc_info_list')
 clusterExport(cl, 'new_qc')
-clusterExport(cl, 'outfiles_met')
-clusterExport(cl, 'outfiles_flux')
+clusterExport(cl, 'global_co2')
 
 clusterExport(cl, 'met_corrections')
 clusterExport(cl, 'flux_corrections')
 clusterExport(cl, 'energy_balance_correction')
+clusterExport(cl, 'hrs')
+clusterExport(cl, 'add_months')
+clusterExport(cl, 'SynthesizeLWdown')
+clusterExport(cl, 'site_exceptions')
+clusterExport(cl, 'VPD2RelHum')
+clusterExport(cl, 'calc_esat')
+clusterExport(cl, 'linear_pred_co2')
 
 clusterEvalQ(cl, library(ncdf4))
+clusterEvalQ(cl, library(chron))
 
   
 
@@ -160,34 +173,22 @@ clusterEvalQ(cl, library(ncdf4))
 #######################
 
 
-
 #Met corrections
-# parLapply(cl, good_sites, function(x) met_corrections(met_nc=met_nc[[x]], outfile_met=outfiles_met[x], 
-#                                                       site_code=site_codes[x], 
-#                                                       qc_info=qc_info[which(qc_sites == site_codes[x]),], 
-#                                                       new_qc=new_qc))
 
-
-clusterMap(cl, function(met, out, qc) met_corrections(met_nc=met, outfile_met=out, 
-                                                       qc_info=qc, new_qc=new_qc),
-           met=met_nc[good_sites], out=outfiles_met[good_sites], 
-           qc=qc_info[which(qc_sites %in% site_codes[good_sites]),])
+clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
+                                                      qc_info=qc, new_qc=new_qc, global_co2=global_co2),
+           met=met_files[good_sites], out=outfiles_met[good_sites],
+           qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])
 
 
 
-
-mapply(function(met, out, qc) met_corrections(met_nc=met, outfile_met=out, 
-                                                      qc_info=qc, new_qc=new_qc),
-           met=met_nc[good_sites], out=outfiles_met[good_sites], 
-           qc=qc_info[which(qc_sites %in% site_codes[good_sites]),])
-
-
+# For testing individual site:
+# s=199
+# met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s],
+#                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]], 
+#                 new_qc=new_qc, global_co2=global_co2)
 
 
-# lapply(good_sites, function(x) met_corrections(met_nc=met_nc[[x]], outfile_met=outfiles_met[x],
-#                                                       site_code=site_codes[x],
-#                                                       qc_info=qc_info[which(qc_sites == site_codes[x]),],
-#                                                       new_qc=new_qc))
 
 
 ########################
@@ -195,34 +196,16 @@ mapply(function(met, out, qc) met_corrections(met_nc=met, outfile_met=out,
 ########################
 
 
+#Flux corrections
+clusterMap(cl, function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_flux=out,
+                                                      qc_info=qc, new_qc=new_qc),
+           flx=flux_files[good_sites], out=outfiles_flux[good_sites],
+           qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])
 
 
 
 
-# parLapply(cl, good_sites, function(x) flux_corrections(flux_nc=flux_nc[[x]], outfile_flux=outfiles_flux[x], 
-#                                                       qc_info=qc_info[which(qc_sites == site_codes[x]),], 
-#                                                       new_qc=new_qc))
 
-clusterMap(cl, function(flx, out, qc) flux_corrections(flux_nc=flx, outfile_flux=out, 
-                                            qc_info=qc, new_qc=new_qc),
-           flx=flux_nc[good_sites], out=outfiles_flux[good_sites], 
-           qc=qc_info[which(qc_sites %in% site_codes[good_sites]),])
-
-
-
-
-#flux_nc <- lapply(flux_files, nc_open, write=TRUE)
-
-# source(paste0(path, "/scripts/functions/flux_corrections.R"))
-# 
-lapply(good_sites, function(x) flux_corrections(flux_nc=flux_nc[[x]], outfile_flux=outfiles_flux[x],
-                                                       qc_info=qc_info[which(qc_sites == site_codes[x]),],
-                                                       new_qc=new_qc))
-
-# 
-# 
-# lapply(flux_nc, nc_close)
-# 
 
 #############################################
 #########------ Plot new data ------#########
