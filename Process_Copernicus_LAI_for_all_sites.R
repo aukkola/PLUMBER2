@@ -1,5 +1,6 @@
 library(ncdf4)
 library(raster)
+library(zoo)
 
 #clear R environment
 rm(list=ls(all=TRUE))
@@ -12,6 +13,16 @@ path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed/"
 flx_path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 
+#----- function
+#find nearest non-NA grid cell
+sample_raster_NA <- function(r, xy)
+{
+        apply(X = xy, MARGIN = 1, 
+        FUN = function(xy) r[which.min(replace(distanceFromPoints(r, xy), is.na(r), NA))])
+}
+#-----  
+  
+  
 #Create output folder for met files with processed LAI time series
 outdir <- paste0(flx_path, "/all_sites_no_duplicates/Nc_files/Met_with_LAI/")
 
@@ -60,26 +71,7 @@ coords <- mapply(function(lon, lat) matrix(c(lon, lat), ncol=2),
                  lon=lon, lat=lat, SIMPLIFY=FALSE)
 
 
-
-#No data is found for Cape Tribulation
-#and the longitude in the Ozflux data file vs. their website doesn't match
-#Using longitude on the website here so data is retrieved
-if (length(which(site_codes == "AU-Ctr") > 0)){
-  au_ctr <- which(site_codes == "AU-Ctr")
-  coords[[au_ctr]][1] <- 145.3778
-}
-#Also no data at DK-Lva (checked that coordinates do match La Thuile metadata file)
-#Adjust so finds data
-if (length(which(site_codes == "DK-Lva") > 0)){
-  dk_lva <- which(site_codes == "DK-Lva")
-  coords[[dk_lva]][1] <- 12.1213
-}
-
-
-#These sites also need fixing...
-#"NO-Blv" "IT-SRo" "IT-Pia" "IT-Noe" "IT-Cp2" "IT-Cpz" "DK-ZaH" "ES-ES1"
-#Need to look for a function that finds nearest non-NA cell
-
+#"NO-Blv" is so far north, no Copernicus data available
 
 
 #Loop through LAI time slices
@@ -120,10 +112,39 @@ for (y in 1:length(lai_files)) {
     if(y == 1) site_tseries[[s]] <- vector()
     
     #Get time series !NB NEED TO FIX HERE TO REMOVE SCALING  1/9 (caused by error in focal function) !!!!!!!!!!!!!!!!!!!!!!!
-    site_tseries[[s]] <- append(site_tseries[[s]], as.vector(extract(lai_averaged, coords[[s]]) /(1/9) ))
+    year_lai_vals <- as.vector(extract(lai_averaged, coords[[s]]) /(1/9) )
+    
+    
+    #If didn't find any, find nearest non-NA pixel
+    if (any (is.na(year_lai_vals))) {
+      
+      #Crop to smaller size to speed up distance calculation
+      temp_lai <- crop(lai_averaged, extent(c(coords[[s]][1]-5, coords[[s]][1]+5,
+                                              coords[[s]][2]-5, coords[[s]][2]+5)))
+
+      
+      #lapply to layers
+      year_lai_vals <- sapply(1:nlayers(temp_lai), function(l) sample_raster_NA(temp_lai[[l]], coords[[s]]))
+      
+      
+    }
+    
+    site_tseries[[s]] <- append(site_tseries[[s]], year_lai_vals)  
+      
+    
   }  
   
 }
+
+
+
+#Check that no missing LAI values
+if (any(sapply(site_tseries, function(x) any(is.na(x))))) {
+  stop("Missing LAI values present")
+}
+
+
+
 
 
 
@@ -138,7 +159,7 @@ for (s in 1:length(site_nc)) {
   
   #Set time stamps (do inside loop as gets adjusted below)
   lai_time <- seq.Date(from=as.Date("1999-01-01"), by="month",
-                       length.out=length(site_tseries[[1]]))
+                       length.out=length(site_tseries[[s]]))
   
   
   #Smooth LAI time series with spline (and cap negative values)
@@ -150,6 +171,62 @@ for (s in 1:length(site_nc)) {
   }
   
   smooth_lai_ts[smooth_lai_ts < 0] <- 0
+  
+  
+  
+  ##########################
+  ### Create climatology ###
+  ##########################
+  
+
+  #Copernicus has 12 time steps per year
+  no_tsteps <- length(which(grepl(copernicus_startyr, lai_time)))
+  
+  #Initialise
+  copernicus_clim <- vector(length=no_tsteps)
+  
+  for (c in 1:no_tsteps) {
+    
+    #Indices for whole years
+    inds <- seq(c, by=no_tsteps, length.out=length(lai_time)/no_tsteps)
+    
+    #Calculate average for time step
+    copernicus_clim[c] <- mean(smooth_lai_ts[inds])
+    
+  }
+  
+  
+  
+  
+  ###################################
+  ### Calculate running anomalies ###
+  ###################################
+  
+  #Initialise
+  lai_clim_anomalies <- rep(NA, length(lai_time))
+  
+  #Repeat climatology for whole time series
+  copernicus_clim_all <- rep_len(copernicus_clim, length(lai_time))
+  
+  
+  #Calculate running mean anomaly (+/- 6 months either side of each time step)
+  anomaly <- rollmean(smooth_lai_ts - copernicus_clim_all, k=12, fill=NA)
+  
+  #Add rolling mean anomaly to climatology
+  lai_clim_anomalies <- copernicus_clim_all + anomaly  
+  
+  
+  #Check if remaining NA values from missing time steps, gapfill if found
+  if (any(is.na(lai_clim_anomalies))) {
+    
+    #Find missing values
+    missing <- which(is.na(lai_clim_anomalies))
+    
+    #Repeat climatology for all years and gapfill time series
+    clim_all_yrs <- rep(copernicus_clim, floor(length(lai_time)/no_tsteps))
+    lai_clim_anomalies[missing] <- clim_all_yrs[missing]
+    
+  }
   
   
   ###################################
@@ -171,62 +248,40 @@ for (s in 1:length(site_nc)) {
   endyr      <- startyr + nyr - 1 
   
   
-  #Need to create climatological average if site time series starts before 
-  #or ends after Copernicus data
-  if (startyr < copernicus_startyr | endyr > copernicus_endyr) {
     
+  #Add climatological values to smoothed lai time series
+  
+  #Overwrite original time series with new extended data
+  
+  #If start year earlier than Copernicus
+  if (startyr < copernicus_startyr) {
     
-    ### Construct Copernicus climatology ###
+    #LAI data
+    lai_clim_anomalies <- append(rep(copernicus_clim, copernicus_startyr - startyr), 
+                                 lai_clim_anomalies)
     
-    #Copernicus has 12 time steps per year
-    no_tsteps <- length(which(grepl(copernicus_startyr, lai_time)))
-    
-    #Initialise
-    copernicus_clim <- vector(length=no_tsteps)
-    
-    for (c in 1:no_tsteps) {
-      
-      #Indices for whole years
-      inds <- seq(c, by=no_tsteps, length.out=length(lai_time)/no_tsteps)
-      
-      #Calculate average for time step
-      copernicus_clim[c] <- mean(smooth_lai_ts[inds])
-      
-    }
-    
-    #Add climatological values to smoothed lai time series
-    
-    #Overwrite original time series with new extended data
-    
-    #If start year earlier than Copernicus
-    if (startyr < copernicus_startyr) {
-      
-      #LAI data
-      smooth_lai_ts <- append(rep(copernicus_clim, copernicus_startyr - startyr), 
-                              smooth_lai_ts)
-      
-      #Time vector
-      lai_time <- append(seq.Date(as.Date(paste0(startyr, "-01-01")), by="month", 
-                         length.out=no_tsteps * (copernicus_startyr - startyr)),
-                         lai_time)
-                                  
-    }
-    
-    #If end year later than Copernicus
-    if (endyr > copernicus_endyr) {
-      
-      #LAI data
-      smooth_lai_ts <- append(smooth_lai_ts,
-                              rep(copernicus_clim, endyr - copernicus_endyr))
-      
-      
-      #Time vector
-      lai_time <- append(lai_time,
-                         seq.Date(as.Date(paste0(copernicus_endyr+1, "-01-01")), by="month", 
-                         length.out=no_tsteps * (endyr - copernicus_endyr)))
-      
-    }
+    #Time vector
+    lai_time <- append(seq.Date(as.Date(paste0(startyr, "-01-01")), by="month", 
+                       length.out=no_tsteps * (copernicus_startyr - startyr)),
+                       lai_time)
+                                
   }
+  
+  #If end year later than Copernicus
+  if (endyr > copernicus_endyr) {
+    
+    #LAI data
+    lai_clim_anomalies <- append(smooth_lai_ts,
+                            rep(lai_clim_anomalies, endyr - copernicus_endyr))
+    
+    
+    #Time vector
+    lai_time <- append(lai_time,
+                       seq.Date(as.Date(paste0(copernicus_endyr+1, "-01-01")), by="month", 
+                       length.out=no_tsteps * (endyr - copernicus_endyr)))
+    
+  }
+
   
   
   #Find modis time step corresponding to site start time
@@ -234,11 +289,11 @@ for (s in 1:length(site_nc)) {
   end_ind   <- tail(which(grepl(endyr, lai_time)), 1) #Last index of end year
   
   #Extract MODIS time steps matching site
-  copernicus_ts_for_site   <- smooth_lai_ts[start_ind:end_ind]
+  copernicus_ts_for_site   <- lai_clim_anomalies[start_ind:end_ind]
   copernicus_time_for_site <- lai_time[start_ind:end_ind]
   
   
-  #Repeat modis time series to create a time series matching site time step
+  #Repeat Copernicus time series to create a time series matching site time step
   copernicus_tseries <- vector()
   
   

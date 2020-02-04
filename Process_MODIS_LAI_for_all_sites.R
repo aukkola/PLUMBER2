@@ -60,6 +60,10 @@ modis_path <- paste0(path, "/MODIS_LAI_time_series/Raw_data")
 #Loop through sites
 for (s in 1:length(site_codes)) {
   
+  #Exception for US-ORv, wetland site with no MODIS LAI available
+  if (site_codes[s] == "US-ORv") next
+  
+  
   #Find files
   lai_file <- list.files(modis_path, pattern=paste0(site_codes[s], "_MCD15A2H_Lai_500m_"), 
                          full.names=TRUE)
