@@ -1,4 +1,4 @@
-met_corrections <- function(met_nc, outfile_met, site_code, qc_info, new_qc)
+met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2)
 {
 
 
@@ -12,6 +12,10 @@ met_corrections <- function(met_nc, outfile_met, site_code, qc_info, new_qc)
   # - applies other fixes if applicable
   # - checks that no missing values in met data
   
+  site_code <- qc_info$Site_code
+  
+  #Open file handle
+  met_nc <- nc_open(infile_met)
   
   
   #######################

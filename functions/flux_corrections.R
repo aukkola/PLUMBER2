@@ -1,5 +1,5 @@
 
-flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc, 
+flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc, 
                              qle_name="Qle", qh_name="Qh", rnet_name="Rnet", qg_name="Qg",
                              qle_cor_name="Qle_cor", qh_cor_name="Qh_cor")
 
@@ -9,6 +9,12 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
   ################################################
   #########------ Flux corrections ------#########
   ################################################
+  
+  
+  #Open file handle
+  flux_nc <- nc_open(infile_flux)
+  
+  
   
   
   #######################
@@ -57,7 +63,6 @@ flux_corrections <- function(flux_nc, qc_info, outfile_flux, new_qc,
   
   #Set names
   names(att_data) <- vars 
-  
   
   
   #################################
