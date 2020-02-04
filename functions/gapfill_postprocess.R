@@ -41,3 +41,70 @@ SynthesizeLWdown <- function(TairK, RH, technique='Abramowitz_2012') {
 }
 
 #-----------------------------------------------------------------------------
+#' Converts VPD (hPa) to relative humidity (percentage)
+VPD2RelHum <- function(VPD, airtemp, vpd_units, tair_units){
+  
+  
+  #Check that VPD in Pascals
+  if(vpd_units != "hPa"){
+    error <- paste("Cannot convert VPD to relative humidity. VPD units not recognised,",
+                   "expecting VPD in hectopascals [ function:", match.call()[[1]], "]")
+    stop(error)
+  }
+  
+  #Check that temperature in Celcius. Convert if not
+  if(tair_units=="K"){
+    airtemp <- airtemp - 273.15
+  }
+  
+  #Hectopascal to Pascal
+  hPa_2_Pa <- 100
+  
+  #Saturation vapour pressure (Pa).
+  esat <- calc_esat(airtemp) 
+  
+  #Relative humidity (%)
+  RelHum <- 100 * (1 - ((VPD * hPa_2_Pa) / esat))
+  
+  #Make sure RH is within [0,100]
+  RelHum[RelHum < 0]   <- 0.01
+  RelHum[RelHum > 100] <- 100
+  
+  return(RelHum)
+}
+
+#-------------------
+
+#' Calculates saturation vapour pressure
+calc_esat <- function(airtemp){
+  #Tair in degrees C
+  
+  #From Jones (1992), Plants and microclimate: A quantitative approach 
+  #to environmental plant physiology, p110
+  esat <- 613.75 * exp(17.502 * airtemp / (240.97+airtemp))
+  
+  return(esat)
+}
+
+#-----------------------------------------------------------------------------
+
+linear_pred_co2 <- function(co2, start_ind, end_ind){
+  
+  #All time steps
+  x_all <- 1:length(co2)
+  
+  co2 <- var_data$CO2air[start_ind:end_ind]
+  
+  #Linear model
+  x  <- 1:length(co2)
+  lm <- lm(co2 ~ x)
+  
+  #Linear prediction
+  co2_pred <- lm$coefficients[2] * x_all + lm$coefficients[1]
+  
+  return(co2_pred)
+  
+}
+
+
+
