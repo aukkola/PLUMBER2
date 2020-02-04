@@ -7,11 +7,11 @@
 # ### Temporary for writing function ###
 # data <- read.csv("~/Documents/FLUXNET2016_processing/FLUXNET2015/FLX_AR-SLu_FLUXNET2015_FULLSET_HH_2009-2011_1-3.csv", header=TRUE)
 # 
-# qle_all    <- data$LE_F_MDS
-# qle_all_qc <- data$LE_F_MDS_QC
+# qle    <- data$LE_F_MDS
+# qle_qc <- data$LE_F_MDS_QC
 # 
-# qh_all    <- data$H_F_MDS
-# qh_all_qc <- data$H_F_MDS_QC
+# qh    <- data$H_F_MDS
+# qh_qc <- data$H_F_MDS_QC
 # 
 # rnet  <- data$NETRAD
 # qg    <- data$G_F_MDS
@@ -19,8 +19,8 @@
 # 
 # time <- strptime(data$TIMESTAMP_START,"%Y%m%d%H%M", tz="GMT")
 # tstepsize <- 1800
-# 
-# #---------------------------
+# # 
+# # #---------------------------
 
 
   
@@ -179,7 +179,7 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   
   
   #Remove after debugging
-  n_for_ebcf <- rep(NA, length(qle_all))
+  #n_for_ebcf <- rep(NA, length(qle_all))
   
   
   #Loop through time steps
@@ -226,7 +226,7 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   
     #Remove after debugging
     method[t]     <- 1
-    n_for_ebcf[t] <- length(which(!is.na(ebcf_tstep)))
+    #n_for_ebcf[t] <- length(which(!is.na(ebcf_tstep)))
     
   }
   
@@ -262,76 +262,76 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   
   
   
-  ################
-  ### Method 2 ###
-  ################
-  
-  #[AmeriFlux Github] Method 2: applied in the halfhours where the moving window of method 1 
-  #includes less than 5 EBCcf values. The corrected fluxes are calculated 
-  #using the average of the EBCcf used to calculate LEcorr and Hcorr in 
-  #method 1 in the halfhours included in a moving window of +/- 5 days 
-  #and +/- one hour. With method 2 LEcorr25, Hcorr25, LEcorr75 and Hcorr75 
-  #are not calculated.
-  
-  
-  #Find incides of corrected Qle and Qh that are missing after applying Method 1
-  #These should match for Qle and Qh
- 
+  # ################
+  # ### Method 2 ###
+  # ################
   # 
-  # st <- Sys.time()
-
-  
-  
-  ind_missing_m2 <- which(is.na(qle_corrected))
-  
-  
-  #If values to process
-  if (length(ind_missing_m2) > 0) {
-    
-    
-    #Loop through incides
-    for (t in ind_missing_m2) {
-      
-      
-      #Start and end index for moving window around time step
-      #Use a moving window of +/- 5 days and one hour
-      #(need to remove one time step at each end to match Fluxnet method)
-      start <- which(time == (time[t] - hrs(24*5 +1)))
-      end   <- which(time == (time[t] + hrs(24*5 +1)))
-      
-      
-      #Add exceptions for first and last parts of tiem series
-      if (length(start) == 0) {
-        start <- 1
-      }
-      if (length(end) == 0) {
-        end <- length(time)
-      }
-      
-      
-      #Extract EBCF for this time step moving window
-      #and calculate average
-      ebcf_tstep <- mean(ebcf[start:end], na.rm=TRUE)
-      
-      
-      #Calculate median and save in method 1 data vectors
-      qle_corrected[t] <- qle_all[t] * ebcf_tstep
-      qh_corrected[t]  <- qh_all[t] * ebcf_tstep
-      
-      #Debugging
-      if (!is.na(ebcf_tstep)) method[t] <- 2
-   
-    }
-    
-  }
-  
-  # et <- Sys.time()
-  # et-st
-  
-  
-  
-  
-  
+  # #[AmeriFlux Github] Method 2: applied in the halfhours where the moving window of method 1 
+  # #includes less than 5 EBCcf values. The corrected fluxes are calculated 
+  # #using the average of the EBCcf used to calculate LEcorr and Hcorr in 
+  # #method 1 in the halfhours included in a moving window of +/- 5 days 
+  # #and +/- one hour. With method 2 LEcorr25, Hcorr25, LEcorr75 and Hcorr75 
+  # #are not calculated.
+  # 
+  # 
+  # #Find incides of corrected Qle and Qh that are missing after applying Method 1
+  # #These should match for Qle and Qh
+  # 
+  # # 
+  # # st <- Sys.time()
+  # 
+  # 
+  # 
+  # ind_missing_m2 <- which(is.na(qle_corrected))
+  # 
+  # 
+  # #If values to process
+  # if (length(ind_missing_m2) > 0) {
+  #   
+  #   
+  #   #Loop through incides
+  #   for (t in ind_missing_m2) {
+  #     
+  #     
+  #     #Start and end index for moving window around time step
+  #     #Use a moving window of +/- 5 days and one hour
+  #     #(need to remove one time step at each end to match Fluxnet method)
+  #     start <- which(time == (time[t] - hrs(24*5 +1)))
+  #     end   <- which(time == (time[t] + hrs(24*5 +1)))
+  #     
+  #     
+  #     #Add exceptions for first and last parts of tiem series
+  #     if (length(start) == 0) {
+  #       start <- 1
+  #     }
+  #     if (length(end) == 0) {
+  #       end <- length(time)
+  #     }
+  #     
+  #     
+  #     #Extract EBCF for this time step moving window
+  #     #and calculate average
+  #     ebcf_tstep <- mean(ebcf[start:end], na.rm=TRUE)
+  #     
+  #     
+  #     #Calculate median and save in method 1 data vectors
+  #     qle_corrected[t] <- qle_all[t] * ebcf_tstep
+  #     qh_corrected[t]  <- qh_all[t] * ebcf_tstep
+  #     
+  #     #Debugging
+  #     if (!is.na(ebcf_tstep)) method[t] <- 2
+  #  
+  #   }
+  #   
+  # }
+  # 
+  # # et <- Sys.time()
+  # # et-st
+  # 
+  # 
+  # 
+  # 
+  # 
   ################
   ### Method 3 ###
   ################
@@ -346,13 +346,7 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
   #Find incides of corrected Qle and Qh that are missing after applying Method 1 and 2
   #These should match for Qle and Qh
   
-  st <- Sys.time()
-
-
   ind_missing_m3 <- which(is.na(qle_corrected))
-  
-  #Debugging
-  ebcf_m3 <- rep(NA, length(time))
   
   
   #If values to process
@@ -366,8 +360,8 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
       #Start and end index for moving window around time step
       #Use a moving window of +/- 5 days and one hour
       #(need to remove one time step at each end to match Fluxnet method)
-      start_time <- time[t] - hrs(24*5 +1)
-      end_time   <- time[t] + hrs(24*5 +1)
+      start_time <- time[t] - hrs(24*15) +1 
+      end_time   <- time[t] + hrs(24*15) -1
       
       
       #Current year (do min and max to account for time periods outside data range)
@@ -409,8 +403,7 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
       
       #Debugging
       if (!is.na(ebcf_tstep)) {
-        method[t] <- 3
-        ebcf_m3[t]  <- ebcf_tstep
+        method[t] <- 2
       }
       
       
