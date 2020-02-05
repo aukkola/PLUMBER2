@@ -7,10 +7,14 @@ library(gsheet)
 library(parallel)
 library(chron)
 
+#clear R environment
+rm(list=ls(all=TRUE))
+
+#Set path
 path <- "/srv/ccrc/data04/z3509830/Fluxnet_data/All_flux_sites_processed_PLUMBER2/"
 
 
-#Source function
+#Source functions
 source(paste0(path, "/scripts/functions/site_exceptions.R"))
 source(paste0(path, "/scripts/functions/diagnostic_plot.R"))
 source(paste0(path, "/scripts/functions/plot_timeseries.R"))
@@ -116,33 +120,32 @@ outfiles_flux <- sapply(flux_files, function(x)paste0(outdir_flux, "/", basename
 
 ### Check which sites to process ###
 
-status <- unlist(sapply(site_codes, function(x) qc_info$decision[which(qc_sites == x)]))
-  
-
-#Check that all sites available
-if (any (is.na(status))) {
-  
-  missing_sites <- site_codes[which(is.na(status))]
-  
-  stop("Sites missing in google doc")
+if (any(!(site_codes %in% qc_info$Site_code))) {
+  stop("Site missing from google sheet")
 }
 
 
-#Then find site to process (i.e. decision is not kill)
+status <- unlist(sapply(site_codes, function(x) qc_info$decision[which(qc_info$Site_code == x)]))
+  
 
+
+
+
+#Then find sites to process (i.e. decision is not kill)
 good_sites <- which(status != "kill")
 
+# #Good site names
+# qc_sites_good <- qc_sites[good_sites]
 # 
-# #For site exceptions, REMOVE AFTER
-# site <- which(site_codes == "DK-Sor")
-# met_nc <- met_nc[[site]]
-# site_code <- site_codes[site]
-# qc_info <- qc_info[site,]
-# 
+# good_inds <- sapply(qc_sites_good, function(x) which(site_codes == x))
 # 
 
 #Turn into a list so can be passed to functions better
-qc_info_list <- lapply(1:nrow(qc_info), function(x) qc_info[x,])
+#qc_info_list <- lapply(good_sites, function(x) qc_info[x,])
+
+
+qc_info_list <- lapply(site_codes, function(x) qc_info[which(qc_info$Site_code ==x),])
+
 
 
 #Initialise parallel cores
@@ -151,6 +154,7 @@ cl <- makeCluster(getOption('cl.cores', 12))
 clusterExport(cl, 'qc_info_list')
 clusterExport(cl, 'new_qc')
 clusterExport(cl, 'global_co2')
+clusterExport(cl, 'outdir_plot')
 
 clusterExport(cl, 'met_corrections')
 clusterExport(cl, 'flux_corrections')
@@ -162,6 +166,8 @@ clusterExport(cl, 'site_exceptions')
 clusterExport(cl, 'VPD2RelHum')
 clusterExport(cl, 'calc_esat')
 clusterExport(cl, 'linear_pred_co2')
+clusterExport(cl, 'diagnostic_plot')
+clusterExport(cl, 'Timeseries')
 
 clusterEvalQ(cl, library(ncdf4))
 clusterEvalQ(cl, library(chron))
@@ -178,17 +184,21 @@ clusterEvalQ(cl, library(chron))
 clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
            met=met_files[good_sites], out=outfiles_met[good_sites],
-           qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])
+           qc=qc_info_list[good_sites])
 
 
 
 # For testing individual site:
-# s=199
+# s=38
 # met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s],
-#                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]], 
+#                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
 #                 new_qc=new_qc, global_co2=global_co2)
-
-
+# 
+# 
+mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
+                                                      qc_info=qc, new_qc=new_qc, global_co2=global_co2),
+           met=met_files[good_sites], out=outfiles_met[good_sites],
+           qc=qc_info_list[good_sites])
 
 
 ########################
@@ -212,10 +222,9 @@ clusterMap(cl, function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_
 #############################################
     
 
-    diagnostic_plot(site_code=site_codes[s], outdir=outdir_plot,  
-                    met_file=outfile_met, flux_file=outfile_flux)
-
-
+clusterMap(cl, function(site, met_file, flux_file) diagnostic_plot(site_code=site, outdir=outdir_plot,
+                                                                   met_file=met_file, flux_file=flux_file),
+           site=site_codes[good_sites], met_file=met_files[good_sites], flux_file=flux_files[good_sites])
 
 
 

@@ -93,7 +93,7 @@ linear_pred_co2 <- function(co2, start_ind, end_ind){
   #All time steps
   x_all <- 1:length(co2)
   
-  co2 <- var_data$CO2air[start_ind:end_ind]
+  co2 <- co2[start_ind:end_ind]
   
   #Linear model
   x  <- 1:length(co2)

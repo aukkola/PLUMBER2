@@ -6,6 +6,11 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
   #########------ Met corrections ------#########
   ###############################################
   
+  #if (file.exists(outfile_met)) return()
+  
+  #check that qc_info matches site
+  if (!grepl(qc_info$Site_code, outfile_met)) stop("QC info does not match site")
+  
   
   # - gets desired years
   # - fixes CO2 if applicable
@@ -87,6 +92,8 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
     #Replace gapfill percentage (now 100%)
     att_data$CO2air["Gap-filled_%"] <- 100
     
+    #Add information to metadata
+    att_data$CO2air$CO2_correction <- "Global CO2 (annual Mauna Loa time series)"
     
   }
   

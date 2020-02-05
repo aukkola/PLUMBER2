@@ -5,7 +5,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     #Variables available
     vars <- names(var_data)
   
-  
+    
   if (site_code == "BE-Lon") {
     #Longwave data needs fixing    
   
@@ -55,29 +55,28 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
     
     
-  } else if (site_code %in% c("DE-Geb","DK-Fou","US-PFa")) {
-    #Missing CO2 values, gapfill using a linear fit on the available time series
+  } else if (site_code == "ES-ES2") {
     
-    co2 <- var_data$CO2air
+    #One day missing in met data, gapfill with previous day
+    vars_to_fix <- c("Tair", "VPD", "Qair", "Precip", "SWdown", "Wind", "Psurf")
     
-    #Linear prediction
-    co2_pred <- linear_pred_co2(co2=co2, start_ind=1, end_ind=length(co2))
-    
-    #Replace missing with predicted and QC with post-processing value
-    na_ind <- which(is.na(co2))
-    
-    var_data$CO2air[na_ind]    <- co2_pred[na_ind]
-    var_data$CO2air_qc[na_ind] <- qc_val
-    
-    #Add information to metadata
-    att_data$CO2air$CO2_correction <- "Linear fit, gapfilling missing time steps"
-    
-    #Add new gapfilled % to attribute data 
-    att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
-                                              length(var_data$CO2air_qc) * 100, digits=1)
-    
-    
+    for (v in vars_to_fix) {
+      
+      #Missing time steps
+      na_ind <- which(is.na(var_data[[v]]))
+      
+      var_data[[v]][na_ind]    <- var_data[[v]][na_ind - (length(na_ind))]
+      var_data[[paste0(v, "_qc")]][na_ind] <- qc_val
+      
+      #Add new gapfilled % to attribute data 
+      att_data[[v]]$`Gap-filled_%` <- round(length(which(var_data[[paste0(v, "_qc")]] > 0)) /
+                                              length(var_data[[paste0(v, "_qc")]]) * 100, digits=1)
+      
+    }
   
+    
+    
+    
   } else if (site_code == "DK-Sor") {
     #Correct CO2 by fitting a linear slope to data, and using that to predict CO2
     
@@ -132,7 +131,11 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     na_ind <- which(is.na(var_data$RH))
     
     var_data$RH[na_ind]    <- rh[na_ind]
-    var_data$RH_qc[na_ind] <- qc_val[na_ind]
+    var_data$RH_qc[na_ind] <- qc_val
+    
+    #Add new gapfilled % to attribute data 
+    att_data$RH$`Gap-filled_%` <- round(length(which(var_data$RH_qc > 0)) /
+                                              length(var_data$RH_qc) * 100, digits=1)
     
     
     
@@ -148,7 +151,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     #Add corrected flux to variable data and QC flag
     na_ind <- which(is.na(var_data$LWdown))
     var_data$LWdown[na_ind]    <- lwdown[na_ind]  
-    var_data$LWdown_qc[na_ind] <- qc_val[na_ind]
+    var_data$LWdown_qc[na_ind] <- qc_val
     
     #Add new gapfilled % to attribute data 
     att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
@@ -164,6 +167,8 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
 
     #Replace all values with predicted and QC with post-processing value
     #(looks dodgy if only gapfill missing tsteps)
+    na_ind <- which(is.na(var_data$CO2air))
+    
     var_data$CO2air    <- co2_pred[na_ind]
     var_data$CO2air_qc <- qc_val
     
@@ -174,29 +179,6 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
                                               length(var_data$CO2air_qc) * 100, digits=1)
     
-    
-    
-  } else if (site_code == "SD-Dem") {
-    #Gapfill first year of CO2
-    
-    ind <- length(var_data$CO2air)/2 #corresponds to end of first yr
-    
-    #Linear prediction
-    co2_pred <- linear_pred_co2(co2=var_data$CO2air, start_ind=ind+1, 
-                                end_ind=length(var_data$CO2air))
-    
-    
-    #Replace all values with predicted and QC with post-processing value
-    #(looks dodgy if only gapfill missing tsteps)
-    var_data$CO2air[1:ind]    <- co2_pred[1:ind]
-    var_data$CO2air_qc[1:ind] <- qc_val
-    
-    #Add information to metadata
-    att_data$CO2air$CO2_correction <- "Linear fit"
-    
-    #Add new gapfilled % to attribute data 
-    att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
-                                              length(var_data$CO2air_qc) * 100, digits=1)
     
     
   } else if (site_code == "US-ARM") {
@@ -212,7 +194,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                RH = var_data$RH[inds])
     
     #Add corrected flux to variable data and QC flag
-    var_data$LWdown[inds]    <- lwdown  
+    var_data$LWdown[inds]    <- lwdown[inds]  
     var_data$LWdown_qc[inds] <- qc_val 
     
     #Add new gapfilled % to attribute data 
@@ -236,8 +218,8 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                RH = var_data$RH)
     
     #Add corrected flux to variable data and QC flag
-    var_data$LWdown[ind]    <- lwdown  
-    var_data$LWdown_qc[ind] <- qc_val 
+    var_data$LWdown[ind]    <- lwdown[ind]  
+    var_data$LWdown_qc[ind] <- qc_val
     
     #Add new gapfilled % to attribute data 
     att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
@@ -266,8 +248,78 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                               length(var_data$CO2air_qc) * 100, digits=1)
     
 
-    
   } 
+
+  #Any sites with missing CO2 values
+    
+  #Missing CO2 values
+  if (any(is.na(var_data$CO2air))) {
+    
+    co2 <- var_data$CO2air
+    
+    #Linear prediction
+    co2_pred <- linear_pred_co2(co2=co2, start_ind=1, end_ind=length(co2))
+    
+    #Replace missing with predicted and QC with post-processing value
+    na_ind <- which(is.na(co2))
+    
+    var_data$CO2air[na_ind]    <- co2_pred[na_ind]
+    var_data$CO2air_qc[na_ind] <- qc_val
+    
+    #Add information to metadata
+    att_data$CO2air$CO2_correction <- "Linear fit, gapfilling missing time steps"
+    
+    #Add new gapfilled % to attribute data 
+    att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
+                                              length(var_data$CO2air_qc) * 100, digits=1)
+    
+  }
+  
+  #Missing RH values 
+  #(some sites have missing RH but all VPD so convert between the two)
+  if (any(is.na(var_data$RH))) {
+    
+    rh <- VPD2RelHum(VPD=var_data$VPD, airtemp=var_data$Tair, 
+                     vpd_units=att_data$VPD$units, tair_units=att_data$Tair$units)
+    
+    #Replace missing values
+    na_ind <- which(is.na(var_data$RH))
+    
+    var_data$RH[na_ind]    <- rh[na_ind]
+    var_data$RH_qc[na_ind] <- qc_val
+    
+    #Add new gapfilled % to attribute data 
+    att_data$RH$`Gap-filled_%` <- round(length(which(var_data$RH_qc > 0)) /
+                                          length(var_data$RH_qc) * 100, digits=1)
+    
+  }
+  
+  #Missing LWdown values
+  if (any(is.na(var_data$LWdown))) {
+    
+    #Check that Tair units are in Kelvin and that RH is available
+    if (att_data$Tair$units != "K") stop("Wrong LWdown units")
+    if (length(which(vars == "RH")) == 0) stop("RH not available")
+    
+    lwdown <- SynthesizeLWdown(TairK = var_data$Tair, 
+                               RH = var_data$RH)
+    
+    #Replace missing with predicted and QC with post-processing value
+    na_ind <- which(is.na(var_data$LWdown))
+    
+    var_data$LWdown[na_ind]    <- lwdown[na_ind]
+    var_data$LWdown_qc[na_ind] <- qc_val
+    
+    #Add information to metadata
+    att_data$LWdown$LWdown_correction <- "Synthesised from RH and Tair (Abramowitz method)"
+    
+    #Add new gapfilled % to attribute data 
+    att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
+                                              length(var_data$LWdown_qc) * 100, digits=1)
+    
+  }
+
+  
 
   #If not fixes, returns original data
   
