@@ -132,6 +132,9 @@ for (s in 1:length(site_codes)) {
   sd_pixel  <- replace(sd_pixel, sd_pixel < 0.1, NA)
   lai_pixel <- replace(lai_pixel, is.na(sd_pixel), NA)
   
+  #Set fill values to missing
+  lai_pixel <- replace(lai_pixel, lai_pixel > 10, NA)
+  
   
   ### Average each time step ###
   
