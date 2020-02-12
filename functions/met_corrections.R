@@ -193,7 +193,6 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
   
   
   
-  
   ##########################################
   ### Check for missing vals in met data ###
   ##########################################
@@ -202,8 +201,11 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
   #Do a final check to make sure there are no missing values in
   #any met variables
   
+  #Find met vars, ignoring any qc variables (don't care about gaps in those)
+  met_vars <- vars[var_inds][which(!grepl("_qc", vars[var_inds]))]
+  
   #Loop through variables
-  for (v in vars[var_inds]) {
+  for (v in met_vars) {
     
     #Check if any missing values
     if (any (is.na(var_data[[v]]))) {

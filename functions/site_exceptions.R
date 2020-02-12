@@ -157,29 +157,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
                                               length(var_data$LWdown_qc) * 100, digits=1)
     
-    
-    #-- Gapfill CO2
-
-    #Linear prediction
-    co2_pred <- linear_pred_co2(co2=var_data$CO2air, start_ind=1, 
-                                end_ind=length(var_data$CO2air))
-    
-
-    #Replace all values with predicted and QC with post-processing value
-    #(looks dodgy if only gapfill missing tsteps)
-    na_ind <- which(is.na(var_data$CO2air))
-    
-    var_data$CO2air    <- co2_pred[na_ind]
-    var_data$CO2air_qc <- qc_val
-    
-    #Add information to metadata
-    att_data$CO2air$CO2_correction <- "Linear fit, correcting all time steps"
-    
-    #Add new gapfilled % to attribute data 
-    att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
-                                              length(var_data$CO2air_qc) * 100, digits=1)
-    
-    
+  
     
   } else if (site_code == "US-ARM") {
     #Need to re-gapfill parts of LWdown
