@@ -4,12 +4,14 @@ diagnostic_plot <- function(site_code, outdir,  met_file, flux_file)
   
   ### Variables to plot ###
   
-  vars <- c("SWdown", "LWdown", "Precip", "Tair", "Qair", "Wind", "CO2air", 
-            "Rnet", "Qle", "Qh", "Qg", "Ebal", "LAI_MODIS", "LAI_Copernicus")
+  vars <- c("SWdown", "LWdown", "Precip", "Tair", "Qair", "Psurf", "Wind", "CO2air", 
+            "Rnet", "Qle", "Qh", "Qg", "Ebal", 
+            "LAI", "LAI_alternative")
   
   #Variable types
-  var_type <- c("Met", "Met", "Met", "Met", "Met", "Met", "Flux",
-                "Flux", "Flux", "Flux", "Flux", "Flux", "Met", "Met") 
+  var_type <- c("Met", "Met", "Met", "Met", "Met", "Met", "Met", "Met",
+                "Flux", "Flux", "Flux", "Flux", "Flux", 
+                "Met", "Met") 
   
   
   ### Get file information ###
@@ -28,7 +30,7 @@ diagnostic_plot <- function(site_code, outdir,  met_file, flux_file)
   
   #QC information
   QC_measured <- 0
-  if(substr(site_codes[s], 1, 3) == "AU-") QC_measured <- append(QC_measured, 10)
+  if(substr(site_code, 1, 3) == "AU-") QC_measured <- append(QC_measured, 10)
   
     
     
@@ -149,10 +151,10 @@ diagnostic_plot <- function(site_code, outdir,  met_file, flux_file)
     
   dev.off()
   
-  
+
   #Close nc handles
-  nc_close(met_file)
-  nc_close(flux_file)
+  nc_close(nc_met)
+  nc_close(nc_flux)
   
   
 } #function

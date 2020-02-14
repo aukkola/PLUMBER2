@@ -228,6 +228,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
 
   } 
 
+    
   #Any sites with missing CO2 values
     
   #Missing CO2 values
@@ -253,7 +254,9 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   }
   
+    
   #Missing RH values 
+    
   #(some sites have missing RH but all VPD so convert between the two)
   if (any(is.na(var_data$RH))) {
     
@@ -272,7 +275,9 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   }
   
+    
   #Missing LWdown values
+    
   if (any(is.na(var_data$LWdown))) {
     
     #Check that Tair units are in Kelvin and that RH is available
@@ -297,6 +302,18 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   }
 
+    
+    
+  #Negative LAI
+  lai_vars <- vars[which(grepl("LAI_", vars))]
+  
+  #Loop through products
+  for (lai in lai_vars) {
+    
+    #Replace negative values with zero
+    var_data[[lai]] <- replace(var_data[[lai]], var_data[[lai]] < 0, 0)
+  }  
+    
   
 
   #If not fixes, returns original data

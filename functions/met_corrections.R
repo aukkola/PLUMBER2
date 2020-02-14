@@ -213,19 +213,17 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
       stop(paste0("Missing values in ", v, ", site: ", site_code))
     } 
   }
+
   
   
-  
-  #And check that LAI data is available
-  lai_vars <- which(grepl("LAI", vars))
+  #First check that LAI data is available
+  lai_vars <- vars[which(grepl("LAI_", vars))]
   
   #Should have two available, check that they are there
   
   if (length(lai_vars) != 2) {
     stop(paste0("LAI variables not available, check site: ", site_code))
   }
-  
-  
   
   
   ##################### 
@@ -298,6 +296,59 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
   #Close original file handle
   nc_close(met_nc)
   
+  
+  
+  ##########################
+  ### Select default LAI ###
+  ##########################
+  
+  
+  #Open file handle
+  nc_out <- nc_open(outfile_met, write=TRUE)
+  
+  
+  #MODIS
+  if (qc_info$LAI == "MODIS") {
+    
+    default_lai    <- "LAI_MODIS"
+    default_source <- "MODIS"
+    
+    alt_lai    <- "LAI_Copernicus"
+    alt_source <- "Copernicus"
+  
+    
+  #Copernicus  
+  } else if (qc_info$LAI == "Copernicus") {
+    
+    
+    default_lai    <- "LAI_Copernicus"
+    default_source <- "Copernicus"
+    
+    alt_lai    <- "LAI_MODIS"
+    alt_source <- "MODIS"
+    
+    
+  #Else stop  
+  } else if (!is.na(qc_info$LAI)) {
+    stop("Incorrect LAI specified in qc_info")
+  }
+  
+  
+  #Rename LAI
+  nc_out <- ncvar_rename(nc_out, default_lai, "LAI")
+  nc_out <- ncvar_rename(nc_out, alt_lai, "LAI_alternative")
+  
+  
+  #Add source in attribute data
+  ncatt_put(nc=nc_out, varid="LAI",
+            attname="source", attval=default_source)
+  
+  ncatt_put(nc=nc_out, varid="LAI_alternative",
+            attname="source", attval=alt_source)
+  
+  
+  #Close file handle
+  nc_close(nc_out)
   
    
 } #function 

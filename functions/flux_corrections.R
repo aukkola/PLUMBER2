@@ -10,6 +10,8 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc,
   #########------ Flux corrections ------#########
   ################################################
   
+  #if (file.exists(outfile_flux)) return()
+  
   
   #Open file handle
   flux_nc <- nc_open(infile_flux)

@@ -221,8 +221,8 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
     
     
     #Calculate median and save in method 1 data vectors
-    qle_corrected[t] <- quantile(qle_corr, probs=0.5)
-    qh_corrected[t]  <- quantile(qh_corr, probs=0.5)
+    qle_corrected[t] <- quantile(qle_corr, probs=0.5, na.rm=TRUE)
+    qh_corrected[t]  <- quantile(qh_corr, probs=0.5, na.rm=TRUE)
   
     #Remove after debugging
     method[t]     <- 1
@@ -394,7 +394,7 @@ energy_balance_correction <- function(qle, qle_qc, qh, qh_qc, rnet, qg, qg_qc, t
       
       #Extract EBCF for this time step moving window
       #and calculate average
-      ebcf_tstep <- mean(ebcf[time_indices], na.rm=TRUE)
+      ebcf_tstep <- median(ebcf[time_indices], na.rm=TRUE)
       
       
       #Calculate median and save in method 1 data vectors

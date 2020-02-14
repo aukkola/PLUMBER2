@@ -62,7 +62,7 @@ global_co2 <- read.table(paste0(path, "/Global_CO2_data/co2_annmean_mlo.txt"))
 #Use 101 as OzFlux using a lot of smaller values
 new_qc <- 101
 
-                       
+
 
 ######################
 ### Load site data ###
@@ -126,7 +126,7 @@ if (any(!(site_codes %in% qc_info$Site_code))) {
 
 
 status <- unlist(sapply(site_codes, function(x) qc_info$decision[which(qc_info$Site_code == x)]))
-  
+
 
 
 
@@ -168,6 +168,13 @@ clusterExport(cl, 'calc_esat')
 clusterExport(cl, 'linear_pred_co2')
 clusterExport(cl, 'diagnostic_plot')
 clusterExport(cl, 'Timeseries')
+clusterExport(cl, 'GetTimingNcfile')
+clusterExport(cl, 'FindTimeVarName')
+clusterExport(cl, 'GetTimeUnits')
+clusterExport(cl, 'GetNumberTimesteps')
+clusterExport(cl, 'GetTimestepSize')
+clusterExport(cl, 'Yeardays')
+clusterExport(cl, 'is.leap')
 
 clusterEvalQ(cl, library(ncdf4))
 clusterEvalQ(cl, library(chron))
@@ -195,10 +202,10 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
 #                 new_qc=new_qc, global_co2=global_co2)
 # 
 # 
-# mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
-#                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
-#            met=met_files[good_sites], out=outfiles_met[good_sites],
-#            qc=qc_info_list[good_sites])
+ # mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
+ #                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
+ #            met=met_files[good_sites], out=outfiles_met[good_sites],
+ #            qc=qc_info_list[good_sites])
 
 
 ########################
@@ -210,35 +217,63 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
 clusterMap(cl, function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_flux=out,
                                                       qc_info=qc, new_qc=new_qc),
            flx=flux_files[good_sites], out=outfiles_flux[good_sites],
-           qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])
+           qc=qc_info_list[good_sites])
 
 
 
-
+# mapply(function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_flux=out,
+#                                                        qc_info=qc, new_qc=new_qc),
+#            flx=flux_files[good_sites], out=outfiles_flux[good_sites],
+#            qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])
+# 
 
 
 #############################################
 #########------ Plot new data ------#########
 #############################################
     
+#Find output files
+met_out_files  <- list.files(outdir_met, full.names=TRUE)
+flux_out_files <- list.files(outdir_flux, full.names=TRUE)
 
+
+#Check that site codes match
+if (length(met_out_files) != length(flux_out_files)) {
+  stop("different number of met and flux files")
+}
+
+
+#Open file handles
+met_nc <- lapply(met_out_files, nc_open, write=TRUE)
+flux_nc <- lapply(flux_out_files, nc_open, write=TRUE)
+
+#Get site codes
+met_site_codes  <- sapply(met_nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
+flux_site_codes <- sapply(met_nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
+
+
+#Check that site codes match
+if (!all(flux_site_codes == met_site_codes)) {
+  stop("met and flux sites don't match")
+}
+
+
+#Close met file handles
+lapply(met_nc, nc_close)
+lapply(flux_nc, nc_close)
+
+
+
+#Create plots
 clusterMap(cl, function(site, met_file, flux_file) diagnostic_plot(site_code=site, outdir=outdir_plot,
                                                                    met_file=met_file, flux_file=flux_file),
-           site=site_codes[good_sites], met_file=met_files[good_sites], flux_file=flux_files[good_sites])
-
+           site=met_site_codes, met_file=met_out_files, flux_file=flux_out_files)
 
 
 
 
 stopCluster(cl)   
   
-
-
-
-  
-
-
-
 
                          
                          
