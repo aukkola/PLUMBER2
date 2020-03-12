@@ -1,4 +1,4 @@
-met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2)
+met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, global_co2)
 {
 
 
@@ -151,6 +151,8 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
     start_ind <- which(years == new_start_year)[1]
     end_ind   <- tail(which(years == new_end_year), 1)
     
+    #Create new time stamp
+    new_time_unit <- paste0("seconds since ", new_start_year, "-01-01 00:00:00")
     
     #New time vector
     time_var <- seq(0, by=60*60*24 / tsteps_per_day, length.out=length(c(start_ind:end_ind)))
@@ -177,6 +179,11 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
       # #Change chunk size (no idea what this is but produces an error otherwise
       # #during nc_create)
       # met_nc[[s]]$var[[v]]$chunksizes <- NA
+      
+      #Replace time unit
+      time_ind <- which(sapply(met_nc$var[[v]]$dim, function(x) x$name) == "time")
+      met_nc$var[[v]]$dim[[time_ind]]$units <- new_time_unit
+      
     }
     
     
@@ -187,7 +194,20 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
     met_nc$dim$time$vals  <- time_var
     met_nc$dim$time$len   <- length(time_var)
     
-    met_nc$dim$time$units <- paste0("seconds since ", new_start_year, "-01-01 00:00:00")
+    met_nc$dim$time$units          <- new_time_unit
+    
+    
+    
+    #Also adjust years in output file name
+    
+    #New years
+    new_yr_label <- paste0(new_start_year, "-", new_end_year)
+    
+    #File name without path
+    filename <- basename(outfile_met)
+    
+    #Replace file name with new years
+    outfile_met <- paste0(outdir, gsub("[0-9]{4}-[0-9]{4}", new_yr_label, filename))
     
   }
   
@@ -230,7 +250,7 @@ met_corrections <- function(infile_met, outfile_met, qc_info, new_qc, global_co2
   ### Re-write file ###
   #####################
   
-  
+
   ###--- Set dimensions ---###
   
   #Get dimensions from input file

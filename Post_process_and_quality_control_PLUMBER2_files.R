@@ -40,10 +40,12 @@ dir.create(outpath)
 #Read QC information from google sheet,
 #e.g. start and end year and CO2 processing
 
+url <- "https://docs.google.com/spreadsheets/d/1bi9bbUpwzRycDJ16VTYGx8ApkDLV_IeSwEsdDJsX1SI/edit?usp=sharing"
 
-qc_info <- gsheet2tbl("https://docs.google.com/spreadsheets/d/1bi9bbUpwzRycDJ16VTYGx8ApkDLV_IeSwEsdDJsX1SI/edit#gid=0")
+qc_info <- gsheet2tbl(url)
 
 qc_sites <- qc_info$Site_code
+
 
 
 
@@ -154,6 +156,8 @@ cl <- makeCluster(getOption('cl.cores', 12))
 clusterExport(cl, 'qc_info_list')
 clusterExport(cl, 'new_qc')
 clusterExport(cl, 'global_co2')
+clusterExport(cl, 'outdir_met')
+clusterExport(cl, 'outdir_flux')
 clusterExport(cl, 'outdir_plot')
 
 clusterExport(cl, 'met_corrections')
@@ -188,7 +192,7 @@ clusterEvalQ(cl, library(chron))
 
 #Met corrections
 
-clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
+clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_met=out, outdir=outdir_met, #passing outdir to be able to alter filename for years
                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
            met=met_files[good_sites], out=outfiles_met[good_sites],
            qc=qc_info_list[good_sites])
@@ -197,10 +201,10 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
 # 
 # # For testing individual site:
 # s=69
-# met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s],
+# met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
 #                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
 #                 new_qc=new_qc, global_co2=global_co2)
-# 
+
 # 
  # mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
  #                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
@@ -215,13 +219,15 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
 
 #Flux corrections
 clusterMap(cl, function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_flux=out,
-                                                      qc_info=qc, new_qc=new_qc),
+                                                       outdir=outdir_flux, #passing outdir to be able to alter filename for years
+                                                       qc_info=qc, new_qc=new_qc),
            flx=flux_files[good_sites], out=outfiles_flux[good_sites],
            qc=qc_info_list[good_sites])
 
 
-
+# 
 # mapply(function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_flux=out,
+#                                                outdir=outdir_flux, 
 #                                                        qc_info=qc, new_qc=new_qc),
 #            flx=flux_files[good_sites], out=outfiles_flux[good_sites],
 #            qc=qc_info_list[which(qc_sites %in% site_codes[good_sites])])

@@ -1,5 +1,5 @@
 
-flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc, 
+flux_corrections <- function(infile_flux, qc_info, outfile_flux, outdir, new_qc, 
                              qle_name="Qle", qh_name="Qh", rnet_name="Rnet", qg_name="Qg",
                              qle_cor_name="Qle_cor", qh_cor_name="Qh_cor")
 
@@ -173,6 +173,8 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc,
     start_ind <- which(years == new_start_year)[1]
     end_ind   <- tail(which(years == new_end_year), 1)
     
+    #Create new time stamp
+    new_time_unit <- paste0("seconds since ", new_start_year, "-01-01 00:00:00")
     
     #New time vector
     time_var <- seq(0, by=60*60*24 / tsteps_per_day, length.out=length(c(start_ind:end_ind)))
@@ -200,6 +202,11 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc,
       # #Change chunk size (no idea what this is but produces an error otherwise
       # #during nc_create)
       # met_nc[[s]]$var[[v]]$chunksizes <- NA
+      
+      #Replace time unit
+      time_ind <- which(sapply(flux_nc$var[[v]]$dim, function(x) x$name) == "time")
+      flux_nc$var[[v]]$dim[[time_ind]]$units <- new_time_unit
+      
     }
     
     
@@ -210,7 +217,19 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, new_qc,
     flux_nc$dim$time$vals  <- time_var
     flux_nc$dim$time$len   <- length(time_var)
     
-    flux_nc$dim$time$units <- paste0("seconds since ", new_start_year, "-01-01 00:00:00")
+    flux_nc$dim$time$units <- new_time_unit
+    
+    
+    #Also adjust years in output file name
+    
+    #New years
+    new_yr_label <- paste0(new_start_year, "-", new_end_year)
+    
+    #File name without path
+    filename <- basename(outfile_flux)
+    
+    #Replace file name with new years
+    outfile_flux <- paste0(outdir, gsub("[0-9]{4}-[0-9]{4}", new_yr_label, filename))
     
   }
   
