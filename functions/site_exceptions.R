@@ -226,8 +226,26 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                               length(var_data$CO2air_qc) * 100, digits=1)
     
 
-  } 
+  } else if (site_code == "AU-Cow") {
 
+    #Bad RH values, replace with values converted from Qair
+    #First part of time series looks similar, but Qair conversion removes
+    #some of the biggest outliers (>100) and the bad data for the last third of
+    #the time series is replaced with more realistic values
+    
+    var_data$RH <- SpecHumidity2Rel(var_data$Qair, var_data$Tair, 
+                           tair_units=att_data$Tair$units, 
+                           pressure=var_data$Psurf, psurf_units=att_data$Psurf$units)
+      
+    #Use QC flags from Qair
+    var_data$RH_qc <- var_data$Qair_qc
+    
+    #Add info that converted from Qair
+    att_data$RH$correction <- "Converted from specific humidity, qc flags as per Qair"
+    
+  }
+    
+    
     
   #Any sites with missing CO2 values
     
@@ -348,6 +366,10 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     #Cap to 100%
     var_data$RH[high_ind]    <- 100
     var_data$RH_qc[high_ind] <- qc_val
+    
+    #Add info on correction to metadata
+    att_data$RH$range_correction <- "Correction applied to RH > 100, capped at 100%"
+    
   }
   
   

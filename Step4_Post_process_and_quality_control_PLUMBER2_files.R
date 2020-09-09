@@ -197,13 +197,13 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
            met=met_files[good_sites], out=outfiles_met[good_sites],
            qc=qc_info_list[good_sites])
 
-# 
-# 
-# # For testing individual site:
-# s=69
-# met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
-#                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
-#                 new_qc=new_qc, global_co2=global_co2)
+
+
+# For testing individual site:
+s=6
+met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
+                 qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
+                new_qc=new_qc, global_co2=global_co2)
 
 # 
  # mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
