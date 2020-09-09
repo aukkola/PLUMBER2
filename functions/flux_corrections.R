@@ -234,6 +234,33 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, outdir, new_qc,
   }
   
   
+  #########################
+  ### Update attributes ###
+  #########################
+  
+  #Need to update missing and gap-filled percentages
+  
+  for (v in names(att_data)) {
+    
+    #Missing percentage
+    if (any(names(att_data[[v]]) == "Missing_%")) {
+      
+      att_data[[v]]["Missing_%"] <-  round(length(which(is.na(var_data[[v]])))/
+                                           length(var_data[[v]]) * 100, digits=1)
+      
+    }
+    
+    #Gap-filled percentage  
+    if (any(names(att_data[[v]]) == "Gap-filled_%")) {
+      
+      att_data[[v]]["Gap-filled_%"] <-  round(length(which(var_data[[paste0(v, "_qc")]] > 0)) /
+                                              length(var_data[[paste0(v, "_qc")]]) * 100, digits=1)
+      
+    }
+    
+  }
+  
+  
   
   ##################### 
   ### Re-write file ###
@@ -283,7 +310,7 @@ flux_corrections <- function(infile_flux, qc_info, outfile_flux, outdir, new_qc,
     ncvar_put(nc=out_nc, varid=new_vars[[v]],
               vals=var_data[[v]])
   }
-  
+
   
   ###--- Variable attributes ---###
   

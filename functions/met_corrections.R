@@ -217,7 +217,7 @@ met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, gl
   ### Check for missing vals in met data ###
   ##########################################
   
-  
+
   #Do a final check to make sure there are no missing values in
   #any met variables
   
@@ -243,6 +243,35 @@ met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, gl
   
   if (length(lai_vars) != 2) {
     stop(paste0("LAI variables not available, check site: ", site_code))
+  }
+  
+  
+  
+  
+  #########################
+  ### Update attributes ###
+  #########################
+  
+  #Need to update missing and gap-filled percentages
+  
+  for (v in names(att_data)) {
+    
+    #Missing percentage
+    if (any(names(att_data[[v]]) == "Missing_%")) {
+      
+      att_data[[v]]["Missing_%"] <-  round(length(which(is.na(var_data[[v]])))/
+                                           length(var_data[[v]]) * 100, digits=1)
+        
+    }
+  
+    #Gap-filled percentage  
+    if (any(names(att_data[[v]]) == "Gap-filled_%")) {
+      
+      att_data[[v]]["Gap-filled_%"] <-  round(length(which(var_data[[paste0(v, "_qc")]] > 0)) /
+                                              length(var_data[[paste0(v, "_qc")]]) * 100, digits=1)
+      
+    }
+
   }
   
   
@@ -294,7 +323,7 @@ met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, gl
     ncvar_put(nc=out_nc, varid=new_vars[[v]],
               vals=var_data[[v]])
   }
-  
+
   
   ###--- Variable attributes ---###
   

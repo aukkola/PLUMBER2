@@ -1,0 +1,8 @@
+cut_results <- function(pdata,limits) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+  nlimits=length(limits)
+  odata=pdata
+  odata[]=nlimits+1
+  for (i in nlimits:1) odata[pdata<=limits[i]]=i
+  odata[is.na(pdata)]=NaN
+  return(odata)
+}  

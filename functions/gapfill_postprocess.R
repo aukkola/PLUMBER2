@@ -10,8 +10,8 @@ SynthesizeLWdown <- function(TairK, RH, technique='Abramowitz_2012') {
   zeroC <- 273.15
   
   #Inputs missing, set lwdown missing
-  if (is.na(TairK) | is.na(RH)) {
-    lwdown <- NA
+  if (all(is.na(TairK)) | all(is.na(RH))) {
+    lwdown <- rep(NA, length(TairK))
     
     #Else synthesise value
   } else {

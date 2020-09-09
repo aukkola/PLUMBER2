@@ -316,6 +316,42 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   
 
+  #Check for negative rainfall, wind speed and VPD
+  #(only a problem in OzFlux)
+  
+  vars_to_check <- c("Precip", "Wind", "VPD", "RH", "Qair")
+  
+  for (v in vars_to_check)
+  {
+    
+    if (any(var_data[[v]] < 0)) {
+      
+      #Find negative values
+      neg_ind <- which(var_data[[v]] < 0)
+      
+      #Set at zero
+      var_data[[v]][neg_ind]    <- 0
+      var_data[[paste0(v, "_qc")]][neg_ind] <- qc_val
+    }
+  }
+  
+  
+  
+  #Relative humidity above 100%  
+  #(mainly in OzFlux but also a couple of La Thuile sites)
+  
+  if (any(var_data$RH > 100)) {
+    
+    #Find negative values
+    high_ind <- which(var_data$RH > 100)
+    
+    #Cap to 100%
+    var_data$RH[high_ind]    <- 100
+    var_data$RH_qc[high_ind] <- qc_val
+  }
+  
+  
+
   #If not fixes, returns original data
   
   return(list(var_data=var_data, att_data=att_data))
