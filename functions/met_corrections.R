@@ -22,7 +22,7 @@ met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, gl
   #Open file handle
   met_nc <- nc_open(infile_met)
   
-  
+
   #######################
   ### Get timing info ###
   #######################

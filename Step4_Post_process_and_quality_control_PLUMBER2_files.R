@@ -100,13 +100,22 @@ lapply(met_nc, nc_close)
 
 #Create output directories
 
+#Met
 outdir_met <- paste0(outpath, "/Nc_files/Met/")
+
+unlink(outdir_met, recursive = TRUE) #remove if already exists
 dir.create(outdir_met, recursive=TRUE)
 
+#Flux
 outdir_flux <- paste0(outpath, "/Nc_files/Flux/")
+
+unlink(outdir_flux, recursive = TRUE) #remove if already exists
 dir.create(outdir_flux, recursive=TRUE)
 
+#Plot
 outdir_plot <- paste0(outpath, "/Diagnostic_plots/")
+
+unlink(outdir_plot, recursive = TRUE) #remove if already exists
 dir.create(outdir_plot, recursive=TRUE)
 
 
@@ -153,32 +162,16 @@ qc_info_list <- lapply(site_codes, function(x) qc_info[which(qc_info$Site_code =
 #Initialise parallel cores
 cl <- makeCluster(getOption('cl.cores', 12))
 
-clusterExport(cl, 'qc_info_list')
-clusterExport(cl, 'new_qc')
-clusterExport(cl, 'global_co2')
-clusterExport(cl, 'outdir_met')
-clusterExport(cl, 'outdir_flux')
-clusterExport(cl, 'outdir_plot')
+clusterExport(cl, list('qc_info_list', 'new_qc','global_co2',
+                       'outdir_met','outdir_flux', 'outdir_plot'))
 
-clusterExport(cl, 'met_corrections')
-clusterExport(cl, 'flux_corrections')
-clusterExport(cl, 'energy_balance_correction')
-clusterExport(cl, 'hrs')
-clusterExport(cl, 'add_months')
-clusterExport(cl, 'SynthesizeLWdown')
-clusterExport(cl, 'site_exceptions')
-clusterExport(cl, 'VPD2RelHum')
-clusterExport(cl, 'calc_esat')
-clusterExport(cl, 'linear_pred_co2')
-clusterExport(cl, 'diagnostic_plot')
-clusterExport(cl, 'Timeseries')
-clusterExport(cl, 'GetTimingNcfile')
-clusterExport(cl, 'FindTimeVarName')
-clusterExport(cl, 'GetTimeUnits')
-clusterExport(cl, 'GetNumberTimesteps')
-clusterExport(cl, 'GetTimestepSize')
-clusterExport(cl, 'Yeardays')
-clusterExport(cl, 'is.leap')
+clusterExport(cl, list('met_corrections', 'flux_corrections','energy_balance_correction', 
+                       'hrs', 'add_months', 'SynthesizeLWdown','site_exceptions','VPD2RelHum',
+                       'SpecHumidity2Rel','calc_esat','linear_pred_co2','diagnostic_plot'))
+
+clusterExport(cl, list('Timeseries', 'GetTimingNcfile', 'FindTimeVarName', 'GetTimeUnits',
+                       'GetNumberTimesteps','GetTimestepSize','Yeardays','is.leap'))
+
 
 clusterEvalQ(cl, library(ncdf4))
 clusterEvalQ(cl, library(chron))
@@ -192,18 +185,21 @@ clusterEvalQ(cl, library(chron))
 
 #Met corrections
 
+print("######## Starting met corrections ########")
+
+
 clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_met=out, outdir=outdir_met, #passing outdir to be able to alter filename for years
                                                       qc_info=qc, new_qc=new_qc, global_co2=global_co2),
            met=met_files[good_sites], out=outfiles_met[good_sites],
            qc=qc_info_list[good_sites])
 
 
-
-# For testing individual site:
-s=6
-met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
-                 qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
-                new_qc=new_qc, global_co2=global_co2)
+# 
+# # For testing individual site:
+# s=69
+# met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
+#                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
+#                 new_qc=new_qc, global_co2=global_co2)
 
 # 
  # mapply(function(met, out, qc) met_corrections(infile_met=met, outfile_met=out,
@@ -215,6 +211,9 @@ met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=out
 ########################
 ### Flux corrections ###
 ########################
+
+
+print("######## Starting flux corrections ########")
 
 
 #Flux corrections
@@ -238,6 +237,8 @@ clusterMap(cl, function(flx, out, qc) flux_corrections(infile_flux=flx, outfile_
 #########------ Plot new data ------#########
 #############################################
     
+print("######## Plotting data ########")
+
 #Find output files
 met_out_files  <- list.files(outdir_met, full.names=TRUE)
 flux_out_files <- list.files(outdir_flux, full.names=TRUE)
@@ -276,6 +277,13 @@ clusterMap(cl, function(site, met_file, flux_file) diagnostic_plot(site_code=sit
            site=met_site_codes, met_file=met_out_files, flux_file=flux_out_files)
 
 
+
+
+# #Create plots
+# mapply(function(site, met_file, flux_file) diagnostic_plot(site_code=site, outdir=outdir_plot,
+#                                                                    met_file=met_file, flux_file=flux_file),
+#            site=met_site_codes, met_file=met_out_files, flux_file=flux_out_files)
+# 
 
 
 stopCluster(cl)   

@@ -333,7 +333,6 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   }  
     
   
-
   #Check for negative rainfall, wind speed and VPD
   #(only a problem in OzFlux)
   
@@ -342,7 +341,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   for (v in vars_to_check)
   {
     
-    if (any(var_data[[v]] < 0)) {
+    if (any(var_data[[v]] < 0, na.rm=TRUE)) { #need to use na.rm, otherwise returns NA if any missing
       
       #Find negative values
       neg_ind <- which(var_data[[v]] < 0)
@@ -350,6 +349,9 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
       #Set at zero
       var_data[[v]][neg_ind]    <- 0
       var_data[[paste0(v, "_qc")]][neg_ind] <- qc_val
+      
+      att_data[[v]]$neg_value_correction <- "Negative values existed, set to 0"
+      
     }
   }
   
@@ -358,7 +360,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   #Relative humidity above 100%  
   #(mainly in OzFlux but also a couple of La Thuile sites)
   
-  if (any(var_data$RH > 100)) {
+  if (any(var_data$RH > 100, na.rm=TRUE)) {
     
     #Find negative values
     high_ind <- which(var_data$RH > 100)
@@ -368,7 +370,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     var_data$RH_qc[high_ind] <- qc_val
     
     #Add info on correction to metadata
-    att_data$RH$range_correction <- "Correction applied to RH > 100, capped at 100%"
+    att_data$RH$range_correction <- "RH values >100% existed, capped to 100%"
     
   }
   
