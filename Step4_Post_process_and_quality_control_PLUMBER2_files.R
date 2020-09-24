@@ -103,19 +103,19 @@ lapply(met_nc, nc_close)
 #Met
 outdir_met <- paste0(outpath, "/Nc_files/Met/")
 
-unlink(outdir_met, recursive = TRUE) #remove if already exists
+#unlink(outdir_met, recursive = TRUE) #remove if already exists
 dir.create(outdir_met, recursive=TRUE)
 
 #Flux
 outdir_flux <- paste0(outpath, "/Nc_files/Flux/")
 
-unlink(outdir_flux, recursive = TRUE) #remove if already exists
+#unlink(outdir_flux, recursive = TRUE) #remove if already exists
 dir.create(outdir_flux, recursive=TRUE)
 
 #Plot
 outdir_plot <- paste0(outpath, "/Diagnostic_plots/")
 
-unlink(outdir_plot, recursive = TRUE) #remove if already exists
+#unlink(outdir_plot, recursive = TRUE) #remove if already exists
 dir.create(outdir_plot, recursive=TRUE)
 
 
@@ -196,7 +196,7 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
 
 # 
 # # For testing individual site:
-# s=69
+# s=28
 # met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
 #                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
 #                 new_qc=new_qc, global_co2=global_co2)

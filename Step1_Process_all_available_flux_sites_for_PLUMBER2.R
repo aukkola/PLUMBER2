@@ -10,7 +10,7 @@
 #devtools::install_github("aukkola/FluxnetLSM", ref="master") #Package broken for some reason, must be installed locally
 
 setwd("/srv/ccrc/data04/z3509830/Fluxnet_data//All_flux_sites_processed_PLUMBER2/FluxnetLSM")
-install.packages(".", repos=NULL, type='source') 
+install.packages(".", repos=NULL, type='source', INSTALL_opts="--no-staged-install") #not sure why have to add install opt 
 
 
 library(FluxnetLSM)  # convert_fluxnet_to_netcdf

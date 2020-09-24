@@ -6,7 +6,49 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     vars <- names(var_data)
   
     
-  if (site_code == "BE-Lon") {
+  if (site_code == "AU-Cow") {
+      
+      #Bad RH values, replace with values converted from Qair
+      #First part of time series looks similar, but Qair conversion removes
+      #some of the biggest outliers (>100) and the bad data for the last third of
+      #the time series is replaced with more realistic values
+      
+      var_data$RH <- SpecHumidity2Rel(var_data$Qair, var_data$Tair, 
+                                      tair_units=att_data$Tair$units, 
+                                      pressure=var_data$Psurf, psurf_units=att_data$Psurf$units)
+      
+      #Use QC flags from Qair
+      var_data$RH_qc <- var_data$Qair_qc
+      
+      #Add info that converted from Qair
+      att_data$RH$correction <- "Converted from specific humidity, qc flags as per Qair"
+      
+      
+      
+  } else if (site_code == "AU-Tum") {
+    
+    #Three outlier Psurf values, replace these with the previous time step
+    #(outliers are back to back so use the value before first outlier)
+    
+    #Using 84000 Pa as the limit as start to get more values if use
+    #higher values
+    
+    ind <- which(var_data$Psurf < 84000)
+  
+    #Add if-clause in case data changes so doesn't cause bugs
+    if (length(ind) > 0) {
+      
+      #Replace with previous value
+      var_data$Psurf[ind] <- var_data$Psurf[ind[1]-1]
+      
+      #Update QC
+      var_data$Psurf_qc[ind] <- qc_val
+      
+    }  
+      
+    
+       
+  } else if (site_code == "BE-Lon") {
     #Longwave data needs fixing    
   
     ind_start <- 74000
@@ -226,28 +268,14 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                               length(var_data$CO2air_qc) * 100, digits=1)
     
 
-  } else if (site_code == "AU-Cow") {
-
-    #Bad RH values, replace with values converted from Qair
-    #First part of time series looks similar, but Qair conversion removes
-    #some of the biggest outliers (>100) and the bad data for the last third of
-    #the time series is replaced with more realistic values
-    
-    var_data$RH <- SpecHumidity2Rel(var_data$Qair, var_data$Tair, 
-                           tair_units=att_data$Tair$units, 
-                           pressure=var_data$Psurf, psurf_units=att_data$Psurf$units)
-      
-    #Use QC flags from Qair
-    var_data$RH_qc <- var_data$Qair_qc
-    
-    #Add info that converted from Qair
-    att_data$RH$correction <- "Converted from specific humidity, qc flags as per Qair"
-    
-  }
+  } 
     
     
     
-  #Any sites with missing CO2 values
+  #########################################
+  ### Any sites with missing CO2 values ###
+  #########################################
+    
     
   #Missing CO2 values
   if (any(is.na(var_data$CO2air))) {
@@ -272,9 +300,13 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   }
   
-    
-  #Missing RH values 
-    
+
+      
+  #########################  
+  ### Missing RH values ###
+  #########################  
+
+     
   #(some sites have missing RH but all VPD so convert between the two)
   if (any(is.na(var_data$RH))) {
     
@@ -294,7 +326,9 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   }
   
     
-  #Missing LWdown values
+  #############################  
+  ### Missing LWdown values ###
+  #############################  
     
   if (any(is.na(var_data$LWdown))) {
     
@@ -321,8 +355,10 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   }
 
     
+  ####################
+  ### Negative LAI ###
+  ####################
     
-  #Negative LAI
   lai_vars <- vars[which(grepl("LAI_", vars))]
   
   #Loop through products
@@ -355,9 +391,12 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     }
   }
   
+
+    
+  ####################################
+  ### Relative humidity above 100% ### 
+  ####################################
   
-  
-  #Relative humidity above 100%  
   #(mainly in OzFlux but also a couple of La Thuile sites)
   
   if (any(var_data$RH > 100, na.rm=TRUE)) {

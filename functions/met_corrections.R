@@ -138,7 +138,6 @@ met_corrections <- function(infile_met, outfile_met, outdir, qc_info, new_qc, gl
   var_inds <- which(sapply(dims, function(x) any(x == "time")))
   
   
-  browser()
   #If need to adjust
   if (start_yr > 1 | end_yr < 0) {
     
