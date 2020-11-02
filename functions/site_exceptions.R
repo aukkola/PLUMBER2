@@ -138,6 +138,37 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
                                               length(var_data$CO2air_qc) * 100, digits=1)
     
     
+    
+    
+  } else if (site_code == "PT-Mi2") {
+    
+    
+    ### Anomalous LWdown values ###
+  
+    #some unrealistic fluctuations in lwdown,
+    #smooth by linearly interpolating between two non-anomalous values
+    #Found values to fix manually. Tried automating by detecting large changes between
+    #time steps but does not work well
+
+    inds_to_fix <- c(49808:49851, 50039:50042, 50192:50195, 52065:52066,
+                     52244:52249, 52300:52301, 52348, 52350)
+    
+    #Set values to NA and then use linear interpolation
+    lwdown <- var_data$LWdown
+    
+    lwdown[inds_to_fix] <- NA
+    
+    #Gapfill with linear interpolation
+    lwdown_new <- na.approx(lwdown)
+      
+    #Replace with new data
+    var_data$LWdown[inds_to_fix] <- lwdown_new[inds_to_fix]
+    
+    #Change QC flag
+    var_data$LWdown_qc[inds_to_fix] <- qc_val
+    
+    
+    
   } else if (site_code == "RU-Fyo") {
     #Gapfill LWdown from XX onwards using data from previous years
     
@@ -330,6 +361,8 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   ### Missing LWdown values ###
   #############################  
     
+  ### Missing values ###
+    
   if (any(is.na(var_data$LWdown))) {
     
     #Check that Tair units are in Kelvin and that RH is available
@@ -355,9 +388,12 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   }
 
     
-  ####################
-  ### Negative LAI ###
-  ####################
+    
+  #######################
+  ### Negative values ###
+  #######################
+    
+  ### LAI ###
     
   lai_vars <- vars[which(grepl("LAI_", vars))]
   
@@ -369,10 +405,13 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   }  
     
   
+  ### Met data ###
+  
   #Check for negative rainfall, wind speed and VPD
   #(only a problem in OzFlux)
+  #as well as negative lwdown
   
-  vars_to_check <- c("Precip", "Wind", "VPD", "RH", "Qair")
+  vars_to_check <- c("Precip", "Wind", "VPD", "RH", "Qair", "LWdown")
   
   for (v in vars_to_check)
   {

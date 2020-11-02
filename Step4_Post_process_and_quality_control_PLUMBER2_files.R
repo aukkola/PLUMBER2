@@ -6,6 +6,7 @@ library(ncdf4)
 library(gsheet)
 library(parallel)
 library(chron)
+library(zoo)
 
 #clear R environment
 rm(list=ls(all=TRUE))
@@ -145,16 +146,7 @@ status <- unlist(sapply(site_codes, function(x) qc_info$decision[which(qc_info$S
 #Then find sites to process (i.e. decision is not kill)
 good_sites <- which(status != "kill")
 
-# #Good site names
-# qc_sites_good <- qc_sites[good_sites]
-# 
-# good_inds <- sapply(qc_sites_good, function(x) which(site_codes == x))
-# 
-
-#Turn into a list so can be passed to functions better
-#qc_info_list <- lapply(good_sites, function(x) qc_info[x,])
-
-
+#Get info for good sites
 qc_info_list <- lapply(site_codes, function(x) qc_info[which(qc_info$Site_code ==x),])
 
 
@@ -167,7 +159,8 @@ clusterExport(cl, list('qc_info_list', 'new_qc','global_co2',
 
 clusterExport(cl, list('met_corrections', 'flux_corrections','energy_balance_correction', 
                        'hrs', 'add_months', 'SynthesizeLWdown','site_exceptions','VPD2RelHum',
-                       'SpecHumidity2Rel','calc_esat','linear_pred_co2','diagnostic_plot'))
+                       'SpecHumidity2Rel','calc_esat','linear_pred_co2','diagnostic_plot',
+                       "na.approx"))
 
 clusterExport(cl, list('Timeseries', 'GetTimingNcfile', 'FindTimeVarName', 'GetTimeUnits',
                        'GetNumberTimesteps','GetTimestepSize','Yeardays','is.leap'))
@@ -193,10 +186,10 @@ clusterMap(cl, function(met, out, qc) met_corrections(infile_met=met, outfile_me
            met=met_files[good_sites], out=outfiles_met[good_sites],
            qc=qc_info_list[good_sites])
 
-
-# 
-# # For testing individual site:
-# s=28
+# # 
+# # # 
+# # # # For testing individual site:
+# s=152 #s=28
 # met_corrections(infile_met=met_files[s], outfile_met=outfiles_met[s], outdir=outdir_met,
 #                  qc=qc_info_list[[which(qc_sites %in% site_codes[s])]],
 #                 new_qc=new_qc, global_co2=global_co2)
