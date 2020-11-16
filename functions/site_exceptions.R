@@ -407,7 +407,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   
   ### Met data ###
   
-  #Check for negative rainfall, wind speed and VPD
+  #Check for negative rainfall, wind speed, SWdown and VPD
   #(only a problem in OzFlux)
   #as well as negative lwdown
   

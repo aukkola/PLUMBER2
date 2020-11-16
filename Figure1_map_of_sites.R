@@ -58,6 +58,10 @@ veg_type <- sapply(nc, function(x) tryCatch(ncvar_get(x, varid='IGBP_veg_short')
 #Get length of time period (in years)
 time_period <- sapply(nc, function(x) get_tperiod(ncvar_get(x, "time")))
 
+start_yr <- sapply(nc, function(x) as.numeric(substr(ncatt_get(x, "time", "units")$value, 15, 18)))
+
+end_yr <- start_yr + time_period - 1
+
 
 #Close file connections
 lapply(nc, nc_close)
