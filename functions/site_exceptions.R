@@ -411,7 +411,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
   #(only a problem in OzFlux)
   #as well as negative lwdown
   
-  vars_to_check <- c("Precip", "Wind", "VPD", "RH", "Qair", "LWdown")
+  vars_to_check <- c("Precip", "Wind", "VPD", "RH", "Qair", "SWdown", "LWdown")
   
   for (v in vars_to_check)
   {
