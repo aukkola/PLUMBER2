@@ -43,7 +43,9 @@ site_data    <- read_csv(url(metadata_url), col_names=c("SiteCode", "Exclude", "
 
 #Loop through sites
 
-for (s in 72:length(site_codes)) {
+#CABLE doesn't like files with 1 tile, not writing patchfrac to those files
+
+for (s in 1:length(site_codes)) {
   
   
   #Convert iveg to numeric
@@ -71,23 +73,44 @@ for (s in 72:length(site_codes)) {
   
   #Define iveg and patchfrac variables
   
-  iveg_var <- ncvar_def(name="iveg", units="-", dim=list(dimx, dimy,dimptc),
-                            missval=-9999, prec="double")
+  if (length(patchfrac) > 1) {
+    iveg_var <- ncvar_def(name="iveg", units="-", dim=list(dimx, dimy,dimptc),
+                          missval=-9999, prec="double")  
+    
+  } else {
+    iveg_var <- ncvar_def(name="iveg", units="-", dim=list(dimx, dimy),
+                          missval=-9999, prec="double")  
+
+  }
   
-  patchfrac_var <- ncvar_def(name="patchfrac", units="-", dim=list(dimx, dimy,dimptc),
+  
+
+  #Define patchfrac variable
+  patchfrac_var <- ncvar_def(name="patchfrac", units="-", dim=list(dimx, dimy, dimptc),
                              missval=-9999, prec="double")
   
   
   #Add variables to file
   met_nc[[s]] <- ncvar_add(met_nc[[s]], iveg_var, verbose=FALSE)
-  met_nc[[s]] <- ncvar_add(met_nc[[s]], patchfrac_var, verbose=FALSE)
+  
+  if (length(patchfrac) > 1) {
+    met_nc[[s]] <- ncvar_add(met_nc[[s]], patchfrac_var, verbose=FALSE)
+  }
   
   
   #Add values
   
-  ncvar_put(met_nc[[s]], varid=iveg_var, vals=iveg, start=c(1,1,1), count=c(1,1, length(patchfrac)))
   
-  ncvar_put(met_nc[[s]], varid=patchfrac_var, vals=patchfrac, start=c(1,1,1), count=c(1,1, length(patchfrac)))
+  if (length(patchfrac) > 1) {
+    ncvar_put(met_nc[[s]], varid=iveg_var, vals=iveg, start=c(1,1,1), count=c(1,1, length(patchfrac)))
+    
+    ncvar_put(met_nc[[s]], varid=patchfrac_var, vals=patchfrac, start=c(1,1,1), count=c(1,1, length(patchfrac)))
+    
+  } else {
+    
+    ncvar_put(met_nc[[s]], varid=iveg_var, vals=iveg, start=c(1,1), count=c(1,1))
+    
+  }
   
   #Close file handle
   nc_close(met_nc[[s]])
