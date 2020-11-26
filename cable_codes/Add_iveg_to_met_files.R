@@ -16,6 +16,7 @@ met_files_old <- list.files(paste0(path, "/Post-processed_PLUMBER2_outputs/Nc_fi
 
 #Copy to a new folder
 outdir <- paste0(paste0(path, "/Post-processed_PLUMBER2_outputs/Nc_files/Met_CABLE/"))
+unlink(outdir, recursive=TRUE)
 dir.create(outdir)
 
 file.copy(met_files_old, outdir)
