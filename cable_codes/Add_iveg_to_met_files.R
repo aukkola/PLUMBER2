@@ -40,15 +40,13 @@ site_data    <- read_csv(url(metadata_url), col_names=c("SiteCode", "Exclude", "
 
 
 
-
-
 #Loop through sites
 
 #CABLE doesn't like files with 1 tile, not writing patchfrac to those files
 
 for (s in 1:length(site_codes)) {
-  
-  
+
+    
   #Convert iveg to numeric
   iveg_char <- site_data$CABLE_PFT[which(site_data$SiteCode == site_codes[s])]
   
@@ -59,8 +57,18 @@ for (s in 1:length(site_codes)) {
   patchfrac_char <- site_data$CABLE_patchfrac[which(site_data$SiteCode == site_codes[s])]
   
   patchfrac <- as.numeric(strsplit(patchfrac_char, ",")[[1]])
+    
   
+  #Get reference height
+  za <- ncvar_get(met_nc[[s]], "reference_height") 
+    
+    
+    
+  #Check that neither iveg nor patchfrac is missing
+  if (any(is.na(c(iveg, patchfrac, za)))) stop(paste0("Missing iveg, patchfrac or za; s: ", s))
   
+  #Check that patchfrac equals 1
+  if (sum(patchfrac) != 1) stop(paste0("Patchfrac does not equal 1; s: ", s))
   
   
   #Define patch dimension
@@ -90,9 +98,19 @@ for (s in 1:length(site_codes)) {
   patchfrac_var <- ncvar_def(name="patchfrac", units="-", dim=list(dimx, dimy, dimptc),
                              missval=-9999, prec="double")
   
+  #Define za variable
+  za_var <- ncvar_def(name="za", units="m", dim=list(dimx, dimy),
+                      missval=-9999, prec="double")
+  
   
   #Add variables to file
+  
+  #Iveg
   met_nc[[s]] <- ncvar_add(met_nc[[s]], iveg_var, verbose=FALSE)
+  
+  #Za
+  met_nc[[s]] <- ncvar_add(met_nc[[s]], za_var, verbose=FALSE)
+  
   
   if (length(patchfrac) > 1) {
     met_nc[[s]] <- ncvar_add(met_nc[[s]], patchfrac_var, verbose=FALSE)
@@ -101,7 +119,7 @@ for (s in 1:length(site_codes)) {
   
   #Add values
   
-  
+  #Iveg and patchfrac
   if (length(patchfrac) > 1) {
     ncvar_put(met_nc[[s]], varid=iveg_var, vals=iveg, start=c(1,1,1), count=c(1,1, length(patchfrac)))
     
@@ -112,6 +130,11 @@ for (s in 1:length(site_codes)) {
     ncvar_put(met_nc[[s]], varid=iveg_var, vals=iveg, start=c(1,1), count=c(1,1))
     
   }
+  
+  #Za
+  ncvar_put(met_nc[[s]], varid=za_var, vals=za, start=c(1,1), count=c(1,1))
+  
+  
   
   #Close file handle
   nc_close(met_nc[[s]])
