@@ -69,6 +69,8 @@ lon <- sapply(nc, ncvar_get, varid='longitude')
 #Get veg type (a few sites don't have short veg code, set manually later)
 veg_type <- sapply(nc, function(x) tryCatch(ncvar_get(x, varid='IGBP_veg_short'), error=function(e) NA))
 
+#Site code
+site_code <- sapply(nc, function(x) ncatt_get(x, varid=0, "site_code")$value)
 
 #Get length of time period (in years)
 time_period <- sapply(nc, function(x) get_tperiod(ncvar_get(x, "time")))
@@ -86,6 +88,33 @@ precip_site <- lapply(nc, ncvar_get, "Precip")
 #Close file connections
 lapply(nc, nc_close)
 
+
+
+##########################
+### Get excluded sites ###
+##########################
+
+
+#List site files
+all_site_files <- list.files(paste0(path, "/all_sites_no_duplicates/Nc_files/Met/"), 
+                         full.names=TRUE)
+
+#Open file handles
+nc_all <- lapply(all_site_files, nc_open)
+
+site_code_all <- sapply(nc_all, function(x) ncatt_get(x, varid=0, "site_code")$value)
+
+excluded_ind <- which(!(site_code_all %in% site_code))
+
+
+#Get coordinates
+lat_excluded <- sapply(nc_all[excluded_ind], ncvar_get, varid='latitude')
+lon_excluded <- sapply(nc_all[excluded_ind], ncvar_get, varid='longitude')
+
+
+
+#Close file connections
+lapply(nc_all, nc_close)
 
 
 
@@ -121,10 +150,10 @@ plot(world, col="grey95", border="grey50")
 points(lon, lat, col=plot_col, cex=0.5, pch=20)
 
 #Excluded sites in grey
-#points()
+points(lon_excluded, lat_excluded, pch=18, cex=0.5, col="grey30")
 
 legend("bottomleft", legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
-       col=c(cols, "grey50"), pch=c(rep(20, length(breaks)-1), 18), bty="n")
+       col=c(cols, "grey30"), pch=c(rep(20, length(breaks)-1), 18), bty="n")
 
 #America, Australia and Europe insets
 
