@@ -123,12 +123,23 @@ lapply(nc_all, nc_close)
 ################
 
 
+#Set output directory
+outdir <- paste0(path, "/PLUMBER2_paper_figs/")
+dir.create(outdir)
+
+#Output file
+outfile <- paste0(outdir, "/Map_of_sites.png")
+
+png(outfile, height=8, width=8, res=500, unit="in")
+
+
+
 layout(mat=matrix(c(1,1,1,2,3,4,5,6,7), ncol=3, byrow=TRUE),
-       heights=c(1,0.5,0.5))
+       heights=c(0.55,0.4,0.5))
 #layout.show(7)
 
-par(mai=c(0.2,0.2,0.2,0.2))
-par(omi=c(0.2,0.2,0.2,0.2))
+par(mai=c(0,0.2,0,0.2))
+par(omi=c(0.4,0.2,0,0.1))
 
 
 breaks <- seq(0.5, 26, by=5)
@@ -143,32 +154,39 @@ classes <- cut_results(time_period, breaks)
 plot_col <- cols[classes]
 
 
-plot(world, col="grey95", border="grey50")
+plot(crop(world, extent(c(-180, 180, -55, 85))), col="grey95", border="grey50",
+     ylim=c(-55, 85))
 
+
+#Excluded sites in grey
+points(lon_excluded, lat_excluded, pch=18, cex=0.9, col="black")
 
 #Selected sites coloured by the number of site years
 points(lon, lat, col=plot_col, cex=0.5, pch=20)
 
-#Excluded sites in grey
-points(lon_excluded, lat_excluded, pch=18, cex=0.5, col="grey30")
 
-legend("bottomleft", legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
-       col=c(cols, "grey30"), pch=c(rep(20, length(breaks)-1), 18), bty="n")
+legend(x=-180, y=0, legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
+       col=c(cols, "black"), pch=c(rep(20, length(breaks)-1), 18), bty="n", cex=1.2)
 
-#America, Australia and Europe insets
+#panel number
+mtext(side=3, "a)", cex=1.1, font=2, line=-2, adj=0, xpd=NA)
+
+
+
+### America, Australia and Europe insets ###
 
 #Outlines on map
 
 #America
-xmin_am <- -130
-xmax_am <- -70
+xmin_am <- -127
+xmax_am <- -67
 ymin_am <- 20
 ymax_am <- 60
 polygon(c(xmin_am, xmax_am, xmax_am, xmin_am),
         c(ymin_am, ymin_am, ymax_am, ymax_am), col=NA, border="black")
 
 #Europe
-xmin_eu <- -13
+xmin_eu <- -15
 xmax_eu <- 45
 ymin_eu <- 30
 ymax_eu <- 70
@@ -177,8 +195,8 @@ polygon(c(xmin_eu, xmax_eu, xmax_eu, xmin_eu),
         c(ymin_eu, ymin_eu, ymax_eu, ymax_eu), col=NA, border="black")
 
 #Australia
-xmin_au <- 110
-xmax_au <- 155
+xmin_au <- 100
+xmax_au <- 160
 ymin_au <- -46
 ymax_au <- -6
 
@@ -188,34 +206,58 @@ polygon(c(xmin_au, xmax_au, xmax_au, xmin_au),
 
 #Subplots
 
-#America
-plot(crop(world, extent(c(xmin_am, xmax_am, ymin_am, ymax_am))), col="grey95", border="grey50")
-points(lon, lat, col=plot_col, cex=1, pch=20)
-polygon(c(xmin_am, xmax_am, xmax_am, xmin_am),
-        c(ymin_am, ymin_am, ymax_am, ymax_am), col=NA, border="black")
+lims <- list(America=c(xmin_am, xmax_am, ymin_am, ymax_am),
+             Europe=c(xmin_eu, xmax_eu, ymin_eu, ymax_eu),
+             Australia=c(xmin_au, xmax_au, ymin_au, ymax_au))
 
-#Europe
-plot(crop(world, extent(c(xmin_eu, xmax_eu, ymin_eu, ymax_eu))), col="grey95", border="grey50")
-points(lon, lat, col=plot_col, cex=1, pch=20)
-polygon(c(xmin_eu, xmax_eu, xmax_eu, xmin_eu),
-        c(ymin_eu, ymin_eu, ymax_eu, ymax_eu), col=NA, border="black")
+#plot subplots
+for (l in 1:length(lims)) {
+  
+  plot(crop(world, extent(lims[[l]])), col="grey95", 
+       border="grey50", ylim=lims[[l]][3:4], xlim=lims[[l]][1:2],
+       xaxs="i", yaxs="i")
+  
+  #Included sites
+  points(lon, lat, col=plot_col, cex=1, pch=20, xpd=FALSE)
+  
+  #Excluded sites
+  points(lon_excluded, lat_excluded, pch=18, cex=0.9, col="black")
+  
+  #Box around plot
+  polygon(c(lims[[l]][1], lims[[l]][2], lims[[l]][2], lims[[l]][1]),
+          c(lims[[l]][3], lims[[l]][3], lims[[l]][4], lims[[l]][4]), col=NA, border="black")
+  
+  #label
+  mtext(side=3, adj=0.03, line=-4, font=2, cex=0.9, paste0(l, ".")) 
+  
+  
+}
 
-#Australia
-plot(crop(world, extent(c(xmin_au, xmax_au, ymin_au, ymax_au))), col="grey95", border="grey50")
-points(lon, lat, col=plot_col, cex=1, pch=20)
-polygon(c(xmin_au, xmax_au, xmax_au, xmin_au),
-        c(ymin_au, ymin_au, ymax_au, ymax_au), col=NA, border="black")
 
-
+#Reset mai
+par(mai=c(0.2,0.4,0.3,0.2))
 
 
 ### Record length ###
 
 #TODO: change into barplot !!!!!!!!!!!!
 
-#Data length (histogram)
-hist(time_period, xlab="Length of time period", ylab="Number of sites",
-     main="")
+#Data length (get frequencies fromhistogram)
+hist_data <- hist(time_period, plot=FALSE)
+
+bars <- barplot(height=hist_data$counts,  ylab="",
+        xlab="", ylim=c(0, 50), col="#3690c0")
+
+#Add x-axis
+axis(side=1, at=c(bars[,1]-0.6, bars[nrow(bars),1]+0.7), labels=hist_data$breaks)
+
+#y- and x-label
+mtext(side=2, "Number of sites", line=2.5)
+mtext(side=1, "Length of time period (years)", line=2.5)
+
+#panel number
+mtext(side=3, "b)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
+
 
 
 ### Vegetation type ###
@@ -224,7 +266,14 @@ hist(time_period, xlab="Length of time period", ylab="Number of sites",
 veg_counts <- sort(sapply(unique(veg_type), function(x) length(which(veg_type == x))),
                    decreasing=TRUE)
 veg_classes <- gsub(" ", "", names(veg_counts))
-barplot(veg_counts, names.arg=veg_classes, ylab="Number of sites")
+barplot(veg_counts, names.arg=veg_classes, ylab="", las=2, col="#3690c0")
+
+#y-label
+mtext(side=2, "Number of sites", line=2.5)
+
+#panel number
+mtext(side=3, "c)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
+
 
 
 ### Climate envelope ###
@@ -238,16 +287,37 @@ temp_vals <- values(temp)
 pr_vals   <- values(precip)
 
 
+#Density colours
+dens_cols  <- densCols(temp_vals, pr_vals, 
+                       colramp=colorRampPalette(c("#d0d1e6", "#045a8d")),
+                       nbin=1000)
+
+
+
 #Site data
 mean_tair_site  <- sapply(tair_site, function(x) mean(x) - 273.15)
 mean_precip_site <- sapply(precip_site, function(x) mean(x) * 60*60*24*365)
 
+#CRU points
+plot(temp_vals, pr_vals, cex=0.1, col=dens_cols, pch=20,
+     xlab="", ylab="")
+
+#y- and x-label
+mtext(side=2, "Mean annual precipitation (mm)", line=2.5)
+mtext(side=1, "Mean annual  temperature", line=2.5)
 
 
-plot(temp_vals, pr_vals, cex=0.1, col="grey70", pch=20,
-     xlab="Mean annual  temperature", ylab="Mean annual precipitation (mm)")
+#Excluded sites
 
 
+#Site points
 points(mean_tair_site, mean_precip_site, col="black", cex=0.6, pch=20)
 
 
+
+#panel number
+mtext(side=3, "d)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
+
+
+
+dev.off()

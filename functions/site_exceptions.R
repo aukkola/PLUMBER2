@@ -193,7 +193,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
     
   } else if (site_code == "RU-Zot") {
-    #Gaps in LWdown, RH and CO2, need to gapfill
+    #Gaps in LWdown and RH, need to gapfill
     
     #-- Gapfill RH by converting VPD
     
@@ -256,7 +256,7 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     
   } else if (site_code == "US-NR1") {
     
-    #Re-gapfill parts ofLWdown, and missing CO2 
+    #Re-gapfill parts ofLWdown
     
     #-- Re-gapfill LWdown
     ind <- c(107500:137000)
@@ -276,29 +276,6 @@ site_exceptions <- function(site_code, var_data, att_data, qc_val) {
     att_data$LWdown$`Gap-filled_%` <- round(length(which(var_data$LWdown_qc > 0)) /
                                               length(var_data$LWdown_qc) * 100, digits=1)
     
-    
-    
-    #-- CO2: fit linear trend to existing data and use to gapfill
-    
-    co2 <- var_data$CO2air
-    
-    #Linear prediction
-    co2_pred <- linear_pred_co2(co2=co2, start_ind=1, end_ind=length(co2))
-    
-    #Replace missing with predicted and QC with post-processing value
-    na_ind <- which(is.na(co2))
-    
-    var_data$CO2air[na_ind]    <- co2_pred[na_ind]
-    var_data$CO2air_qc[na_ind] <- qc_val
-    
-    #Add information to metadata
-    att_data$CO2air$CO2_correction <- "Linear fit, gapfilling missing time steps"
-    
-    #Add new gapfilled % to attribute data 
-    att_data$CO2air$`Gap-filled_%` <- round(length(which(var_data$CO2air_qc > 0)) /
-                                              length(var_data$CO2air_qc) * 100, digits=1)
-    
-
   } 
     
     
