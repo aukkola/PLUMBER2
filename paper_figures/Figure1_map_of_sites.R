@@ -82,7 +82,7 @@ end_yr <- start_yr + time_period - 1
 
 #Get Tair and precip
 tair_site   <- lapply(nc, ncvar_get, "Tair")
-precip_site <- lapply(nc, ncvar_get, "Precip")
+precip_site <- lapply(nc, ncvar_get, "Precip") ### CHANGE TO avPrecip variable !!!!!!
 
 
 #Close file connections
@@ -111,6 +111,10 @@ excluded_ind <- which(!(site_code_all %in% site_code))
 lat_excluded <- sapply(nc_all[excluded_ind], ncvar_get, varid='latitude')
 lon_excluded <- sapply(nc_all[excluded_ind], ncvar_get, varid='longitude')
 
+
+#Get Tair and precip
+tair_excluded_site   <- lapply(nc_all[excluded_ind], ncvar_get, "Tair")
+precip_excluded_site <- lapply(nc_all[excluded_ind], ncvar_get, "Precip") ### CHANGE TO avPrecip variable !!!!!!
 
 
 #Close file connections
@@ -182,8 +186,6 @@ xmin_am <- -127
 xmax_am <- -67
 ymin_am <- 20
 ymax_am <- 60
-polygon(c(xmin_am, xmax_am, xmax_am, xmin_am),
-        c(ymin_am, ymin_am, ymax_am, ymax_am), col=NA, border="black")
 
 #Europe
 xmin_eu <- -15
@@ -191,24 +193,24 @@ xmax_eu <- 45
 ymin_eu <- 30
 ymax_eu <- 70
 
-polygon(c(xmin_eu, xmax_eu, xmax_eu, xmin_eu),
-        c(ymin_eu, ymin_eu, ymax_eu, ymax_eu), col=NA, border="black")
-
 #Australia
 xmin_au <- 100
 xmax_au <- 160
 ymin_au <- -46
 ymax_au <- -6
 
-polygon(c(xmin_au, xmax_au, xmax_au, xmin_au),
-        c(ymin_au, ymin_au, ymax_au, ymax_au), col=NA, border="black")
-
-
-#Subplots
-
+#Collate coordinates
 lims <- list(America=c(xmin_am, xmax_am, ymin_am, ymax_am),
              Europe=c(xmin_eu, xmax_eu, ymin_eu, ymax_eu),
              Australia=c(xmin_au, xmax_au, ymin_au, ymax_au))
+
+
+#Polygons on map for subplots
+for (l in 1:length(lims)) {
+  polygon(c(lims[[l]][1], lims[[l]][2], lims[[l]][2], lims[[l]][1]),
+          c(lims[[l]][3], lims[[l]][3], lims[[l]][4], lims[[l]][4]), col=NA, border="black")
+}
+
 
 #plot subplots
 for (l in 1:length(lims)) {
@@ -295,8 +297,17 @@ dens_cols  <- densCols(temp_vals, pr_vals,
 
 
 #Site data
+
+#Included
 mean_tair_site  <- sapply(tair_site, function(x) mean(x) - 273.15)
 mean_precip_site <- sapply(precip_site, function(x) mean(x) * 60*60*24*365)
+
+#Excluded
+
+mean_tair_excluded_site   <- sapply(tair_excluded_site, function(x) mean(x) - 273.15)
+mean_precip_excluded_site <- sapply(precip_excluded_site, function(x) mean(x) * 60*60*24*365)
+
+
 
 #CRU points
 plot(temp_vals, pr_vals, cex=0.1, col=dens_cols, pch=20,
@@ -308,12 +319,13 @@ mtext(side=1, "Mean annual  temperature", line=2.5)
 
 
 #Excluded sites
-
+points(mean_tair_excluded_site, mean_precip_excluded_site, col="red", cex=0.6, pch=20)
 
 #Site points
 points(mean_tair_site, mean_precip_site, col="black", cex=0.6, pch=20)
 
-
+#Legend
+legend("topleft", c("Included", "Excluded"), col=c("black", "red"), pch=20, bty="n")
 
 #panel number
 mtext(side=3, "d)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
