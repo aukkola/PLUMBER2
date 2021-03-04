@@ -146,12 +146,19 @@ par(mai=c(0,0.2,0,0.2))
 par(omi=c(0.4,0.2,0,0.1))
 
 
+#Exclude colour
+excl_col <- "#c51b7d"
+
+
+
+### World map ###
+
+
 breaks <- seq(0.5, 26, by=5)
 
 
 cols <- rev(viridis(length(breaks)-1)) #colorRampPalette(c("#c7e9b4", "#7fcdbb", "#41b6c4",
                    #"#1d91c0", "#225ea8", "#0c2c84"))
-
 
 classes <- cut_results(time_period, breaks)
 
@@ -162,15 +169,16 @@ plot(crop(world, extent(c(-180, 180, -55, 85))), col="grey95", border="grey50",
      ylim=c(-55, 85))
 
 
-#Excluded sites in grey
-points(lon_excluded, lat_excluded, pch=18, cex=0.9, col="black")
+#Excluded sites
+points(lon_excluded, lat_excluded, pch=18, cex=0.9, col=excl_col)
 
 #Selected sites coloured by the number of site years
 points(lon, lat, col=plot_col, cex=0.5, pch=20)
 
 
 legend(x=-180, y=0, legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
-       col=c(cols, "black"), pch=c(rep(20, length(breaks)-1), 18), bty="n", cex=1.2)
+       col=c(cols, excl_col), pch=c(rep(20, length(breaks)-1), 18), bty="n", cex=1.2,
+       title="Site years")
 
 #panel number
 mtext(side=3, "a)", cex=1.1, font=2, line=-2, adj=0, xpd=NA)
@@ -209,6 +217,10 @@ lims <- list(America=c(xmin_am, xmax_am, ymin_am, ymax_am),
 for (l in 1:length(lims)) {
   polygon(c(lims[[l]][1], lims[[l]][2], lims[[l]][2], lims[[l]][1]),
           c(lims[[l]][3], lims[[l]][3], lims[[l]][4], lims[[l]][4]), col=NA, border="black")
+
+  #label
+  text(x=lims[[l]][1], y=lims[[l]][4], font=2, adj=c(-0.25,1.25), cex=1.1, paste0(l, ".")) 
+  
 }
 
 
@@ -219,12 +231,14 @@ for (l in 1:length(lims)) {
        border="grey50", ylim=lims[[l]][3:4], xlim=lims[[l]][1:2],
        xaxs="i", yaxs="i")
   
-  #Included sites
-  points(lon, lat, col=plot_col, cex=1, pch=20, xpd=FALSE)
   
   #Excluded sites
-  points(lon_excluded, lat_excluded, pch=18, cex=0.9, col="black")
-  
+  points(lon_excluded, lat_excluded, pch=18, cex=0.9, col=excl_col)
+
+  #Included sites
+  points(lon, lat, col=plot_col, cex=1.25, pch=20, xpd=FALSE)
+
+    
   #Box around plot
   polygon(c(lims[[l]][1], lims[[l]][2], lims[[l]][2], lims[[l]][1]),
           c(lims[[l]][3], lims[[l]][3], lims[[l]][4], lims[[l]][4]), col=NA, border="black")
@@ -254,8 +268,8 @@ bars <- barplot(height=hist_data$counts,  ylab="",
 axis(side=1, at=c(bars[,1]-0.6, bars[nrow(bars),1]+0.7), labels=hist_data$breaks)
 
 #y- and x-label
-mtext(side=2, "Number of sites", line=2.5)
-mtext(side=1, "Length of time period (years)", line=2.5)
+mtext(side=2, "Number of sites", line=2.5, cex=0.9)
+mtext(side=1, "Length of time period (years)", line=2.5, cex=0.9)
 
 #panel number
 mtext(side=3, "b)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
@@ -271,7 +285,7 @@ veg_classes <- gsub(" ", "", names(veg_counts))
 barplot(veg_counts, names.arg=veg_classes, ylab="", las=2, col="#3690c0")
 
 #y-label
-mtext(side=2, "Number of sites", line=2.5)
+mtext(side=2, "Number of sites", line=2.5, cex=0.9)
 
 #panel number
 mtext(side=3, "c)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
@@ -299,7 +313,7 @@ dens_cols  <- densCols(temp_vals, pr_vals,
 #Site data
 
 #Included
-mean_tair_site  <- sapply(tair_site, function(x) mean(x) - 273.15)
+mean_tair_site   <- sapply(tair_site, function(x) mean(x) - 273.15)
 mean_precip_site <- sapply(precip_site, function(x) mean(x) * 60*60*24*365)
 
 #Excluded
@@ -311,21 +325,21 @@ mean_precip_excluded_site <- sapply(precip_excluded_site, function(x) mean(x) * 
 
 #CRU points
 plot(temp_vals, pr_vals, cex=0.1, col=dens_cols, pch=20,
-     xlab="", ylab="")
+     xlab="", ylab="", ylim=c(0,8000))
 
 #y- and x-label
-mtext(side=2, "Mean annual precipitation (mm)", line=2.5)
-mtext(side=1, "Mean annual  temperature", line=2.5)
+mtext(side=2, "MAP (mm)", line=2.5, cex=0.9)
+mtext(side=1, expression("MAT"~"("*degree*"C)"), line=2.5, cex=0.9)
 
 
 #Excluded sites
-points(mean_tair_excluded_site, mean_precip_excluded_site, col="red", cex=0.6, pch=20)
+points(mean_tair_excluded_site, mean_precip_excluded_site, col=excl_col, cex=0.6, pch=18)
 
 #Site points
 points(mean_tair_site, mean_precip_site, col="black", cex=0.6, pch=20)
 
 #Legend
-legend("topleft", c("Included", "Excluded"), col=c("black", "red"), pch=20, bty="n")
+legend("topleft", c("Included", "Excluded"), col=c("black", excl_col), pch=c(20, 18), bty="n")
 
 #panel number
 mtext(side=3, "d)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
