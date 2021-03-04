@@ -173,7 +173,7 @@ plot(crop(world, extent(c(-180, 180, -55, 85))), col="grey95", border="grey50",
 points(lon_excluded, lat_excluded, pch=18, cex=0.9, col=excl_col)
 
 #Selected sites coloured by the number of site years
-points(lon, lat, col=plot_col, cex=0.5, pch=20)
+points(lon, lat, col=plot_col, cex=0.75, pch=20)
 
 
 legend(x=-180, y=0, legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
@@ -233,10 +233,16 @@ for (l in 1:length(lims)) {
   
   
   #Excluded sites
-  points(lon_excluded, lat_excluded, pch=18, cex=0.9, col=excl_col)
+  ind <- which(lon_excluded >= lims[[l]][1] & lon_excluded <= lims[[l]][2] &
+               lat_excluded >= lims[[l]][3] & lat_excluded <= lims[[l]][4]) #need this or R plots points outside domain
+  
+  points(lon_excluded[ind], lat_excluded[ind], pch=18, cex=0.9, col=excl_col)
 
   #Included sites
-  points(lon, lat, col=plot_col, cex=1.25, pch=20, xpd=FALSE)
+  ind <- which(lon >= lims[[l]][1] & lon <= lims[[l]][2] &
+                 lat >= lims[[l]][3] & lat <= lims[[l]][4]) #need this or R plots points outside domain
+  
+  points(lon[ind], lat[ind], col=plot_col, cex=1.25, pch=20, xpd=FALSE)
 
     
   #Box around plot
@@ -251,7 +257,7 @@ for (l in 1:length(lims)) {
 
 
 #Reset mai
-par(mai=c(0.2,0.4,0.3,0.2))
+par(mai=c(0.2,0.35,0.4,0.1))
 
 
 ### Record length ###
@@ -262,10 +268,10 @@ par(mai=c(0.2,0.4,0.3,0.2))
 hist_data <- hist(time_period, plot=FALSE)
 
 bars <- barplot(height=hist_data$counts,  ylab="",
-        xlab="", ylim=c(0, 50), col="#3690c0")
+        xlab="", ylim=c(0, 50), col="#3690c0", las=2)
 
 #Add x-axis
-axis(side=1, at=c(bars[,1]-0.6, bars[nrow(bars),1]+0.7), labels=hist_data$breaks)
+axis(side=1, at=c(bars[,1]-0.6, bars[nrow(bars),1]+0.7), labels=hist_data$breaks, las=2)
 
 #y- and x-label
 mtext(side=2, "Number of sites", line=2.5, cex=0.9)
