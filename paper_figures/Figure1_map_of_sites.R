@@ -106,6 +106,9 @@ site_code_all <- sapply(nc_all, function(x) ncatt_get(x, varid=0, "site_code")$v
 
 excluded_ind <- which(!(site_code_all %in% site_code))
 
+#Get length of time period (in years)
+time_period_all <- sapply(nc_all, function(x) get_tperiod(ncvar_get(x, "time")))
+
 
 #Get coordinates
 lat_excluded <- sapply(nc_all[excluded_ind], ncvar_get, varid='latitude')
@@ -149,23 +152,29 @@ par(omi=c(0.4,0.2,0,0.1))
 #Exclude colour
 excl_col <- "#c51b7d"
 
+land_col <- "grey97"
 
 
 ### World map ###
 
 
-breaks <- seq(0.5, 26, by=5)
+breaks <- c(seq(0.5, 20, by=5), 22)
 
 
-cols <- rev(viridis(length(breaks)-1)) #colorRampPalette(c("#c7e9b4", "#7fcdbb", "#41b6c4",
-                   #"#1d91c0", "#225ea8", "#0c2c84"))
 
-classes <- cut_results(time_period, breaks)
+
+cols <- colorRampPalette(c("#c7e9b4", "#41b6c4", "#225ea8",
+                           "#081d58"))(length(breaks)-1)
+  
+  #colorRampPalette(c("#7fcdbb", "#41b6c4",
+  #                        "#1d91c0", "#225ea8", "#0c2c84"))(length(breaks)-1) #rev(viridis(length(breaks)-1)) 
+
+classes <- cut_results(time_period, breaks[2:(length(breaks)-1)])
 
 plot_col <- cols[classes]
 
 
-plot(crop(world, extent(c(-180, 180, -55, 85))), col="grey95", border="grey50",
+plot(crop(world, extent(c(-180, 180, -55, 85))), col=land_col, border="grey50",
      ylim=c(-55, 85))
 
 
@@ -176,7 +185,7 @@ points(lon_excluded, lat_excluded, pch=18, cex=0.9, col=excl_col)
 points(lon, lat, col=plot_col, cex=0.75, pch=20)
 
 
-legend(x=-180, y=0, legend=c("1-5", "6-10", "11-15", "16-20", "21", "Excluded"),
+legend(x=-180, y=0, legend=c("1-5", "6-10", "11-15", "16-21", "Excluded"),
        col=c(cols, excl_col), pch=c(rep(20, length(breaks)-1), 18), bty="n", cex=1.2,
        title="Site years")
 
@@ -227,7 +236,7 @@ for (l in 1:length(lims)) {
 #plot subplots
 for (l in 1:length(lims)) {
   
-  plot(crop(world, extent(lims[[l]])), col="grey95", 
+  plot(crop(world, extent(lims[[l]])), col=land_col, 
        border="grey50", ylim=lims[[l]][3:4], xlim=lims[[l]][1:2],
        xaxs="i", yaxs="i")
   
@@ -261,8 +270,6 @@ par(mai=c(0.2,0.35,0.4,0.1))
 
 
 ### Record length ###
-
-#TODO: change into barplot !!!!!!!!!!!!
 
 #Data length (get frequencies fromhistogram)
 hist_data <- hist(time_period, plot=FALSE)
@@ -299,8 +306,6 @@ mtext(side=3, "c)", cex=1.1, font=2, line=1, adj=-0.15, xpd=NA)
 
 
 ### Climate envelope ###
-
-#TODO: ADD excluded sites !!!!!!!!!!!!!!!!!!
 
 #Climate envelope (MAT, MAP scatter)
 
