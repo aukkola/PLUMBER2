@@ -13,3 +13,6 @@ Final PLUMBER2 dataset is available at:
 Also see FluxnetLSM(<https://github.com/aukkola/FluxnetLSM>) R package used for 
 pre-processing steps. 
 
+**NB:** there is currently an error in the _Qair_qc_ processing with too many time steps flagged as "observed" at **FLUXNET2015** and **La** **Thuile** sites. As _Qair_ is calculated from _VPD_, _Tair_ and _Psurf_ at these sites, you can use the qc flags for these variables to assess _Qair_ quality 
+
+
